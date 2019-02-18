@@ -124,6 +124,11 @@ Please let us know how can we help. Do check out [issues](https://github.com/ant
 
 To become a contributor, please follow our [contributing guide](https://github.com/antvis/f2/blob/master/CONTRIBUTING.md).
 
+## Experience Improvement Program Description
+
+Since version 3.1.12 (released on 2018-06-20), we add `F2.track(true)` method for our user experience improvement program. But now the program has finish, so we remove the method from F2 since version 3.3.4. We are very sorry if it has caused trouble for you.
+
+
 ## License
 
 [MIT license](./LICENSE).

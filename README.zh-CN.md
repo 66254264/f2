@@ -115,6 +115,10 @@ $ npm run bundler
 
 如需提交代码，请遵从我们的[贡献指南](https://github.com/antvis/f2/blob/master/CONTRIBUTING.md)。
 
+## 体验改进计划说明
+
+F2 从 3.1.12（2018-06-20发布）版本开始添加了`F2.track（true）`方法。 目前我们的体验改进计划已经完成，所以从 3.3.4 版本开始该方法将从 F2 中删除。 如果它给你带来麻烦，我们深表歉意。
+
 ## License
 
 [MIT license](./LICENSE).
