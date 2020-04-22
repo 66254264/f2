@@ -19,6 +19,12 @@ require('./component/guide/text');
 require('./component/guide/tag');
 require('./component/guide/point');
 
+const Marker = require('./component/marker');
+// 把一些component挂上去，外部可以直接使用
+F2.Component = {
+  Marker
+};
+
 const Tooltip = require('./plugin/tooltip');
 const Guide = require('./plugin/guide');
 const Legend = require('./plugin/legend');
@@ -27,5 +33,8 @@ const Animation = require('./animation/detail');
 F2.Animate = require('./animation/animate');
 // register plugins
 F2.Chart.plugins.register([ Tooltip, Legend, Guide, Animation ]);
+
+// 默认添加交互
+require('./interaction/new/index');
 
 module.exports = F2;
