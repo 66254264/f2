@@ -3,6 +3,7 @@ coverage/
 demos/assets/
 dist/
 lib/
+es/
 mocks/
 node_modules/
 demos/assets/
@@ -10,3 +11,5 @@ lib/
 demos/index.html
 docs/
 public
+types/
+types-test/
