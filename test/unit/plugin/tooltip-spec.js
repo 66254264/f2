@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { gestureSimulator } from '../test-util';
+import { gestureSimulator, delay } from '../test-util';
 import * as F2 from '../../../src/core';
 import '../../../src/geom/interval';
 import '../../../src/geom/line';
@@ -128,9 +128,8 @@ describe('Tooltip Plugin', function() {
 
     tooltipController = chart.get('tooltipController');
     tooltip = tooltipController.tooltip;
-    const { prePoint, _lastActive } = tooltipController;
+    const { _lastActive } = tooltipController;
     expect(tooltip).to.be.null;
-    expect(prePoint).to.be.null;
     expect(_lastActive).to.be.null;
 
     chart.destroy();
@@ -404,17 +403,19 @@ describe('Tooltip crosshairs', function() {
     expect(crosshairsShapeX).not.to.be.undefined;
     expect(crosshairsShapeY).not.to.be.undefined;
     expect(snapEqual(crosshairsShapeY.get('x'), 235.2777777777778)).to.be.true;
+
     expect(snapEqual(crosshairsShapeX.get('y'), 204.726)).to.be.true;
+
     expect(tooltip.xTipBox.y).to.equal(291);
     expect(tooltip.xTipBox.content).to.equal('date:2018-04-26');
     expect(snapEqual(tooltip.yTipBox.x, 21.6845703125)).to.be.true;
     expect(tooltip.yTipBox.content).to.equal(10586);
 
-
     chart.showTooltip({
       x: point.x,
       y: point.y + 20
     });
+
     expect(snapEqual(tooltipController.tooltip.crosshairsShapeX.get('y'), 224.726)).to.be.true;
     expect(snapEqual(tooltip.yTipBox.x, 18.34765625)).to.be.true;
     expect(tooltip.yTipBox.content).to.equal(8363);
@@ -596,6 +597,56 @@ describe('Tooltip crosshairs', function() {
     expect(yTip.content).to.equal('2018-04-22');
     expect(snapEqual(yTip.y, 227.91666666666669)).to.be.true;
     expect(xTip.content).to.equal(4999);
+  });
+
+  it('alwaysshow true', async () => {
+    chart.destroy();
+    const data = [
+      { name: 'London', 月份: 'Jan.', 月均降雨量: 18.9 },
+      { name: 'London', 月份: 'Feb.', 月均降雨量: 28.8 },
+      { name: 'London', 月份: 'Mar.', 月均降雨量: 39.3 },
+      { name: 'Berlin', 月份: 'Jan.', 月均降雨量: 12.4 },
+      { name: 'Berlin', 月份: 'Feb.', 月均降雨量: 23.2 },
+      { name: 'Berlin', 月份: 'Mar.', 月均降雨量: 34.5 }
+    ];
+    chart = new F2.Chart({
+      id: 'chart-tooltip',
+      width: 300,
+      height: 300,
+      plugins: [ Tooltip, Legend ],
+      pixelRatio: 2
+    });
+    chart.source(data);
+    chart.line().position('月份*月均降雨量').color('name');
+    chart.tooltip({
+      alwaysShow: true
+    });
+    chart.render();
+    const point = chart.getPosition({ name: 'London', 月份: 'Jan.', 月均降雨量: 18.9 });
+    chart.showTooltip(point);
+
+    const tooltipController = chart.get('tooltipController');
+    const tooltip = tooltipController.tooltip;
+    expect(tooltip.items.length).to.equal(2);
+    expect(tooltip.container.container.get('visible')).to.equal(true);
+
+    await delay(100);
+    chart.showTooltip({ x: 0, y: 0 });
+    expect(tooltip.container.container.get('visible')).to.equal(true);
+
+    await delay(100);
+    await gestureSimulator(canvas, 'touchstart', { clientX: 170, clientY: 21 });
+    expect(tooltipController.tooltip.container.container.get('visible')).to.equal(true);
+    expect(tooltipController.tooltip.items.length).to.equal(1);
+
+    await delay(100);
+    await gestureSimulator(canvas, 'touchstart', { clientX: 38, clientY: 20 });
+    expect(tooltipController.tooltip.items).to.equal(undefined);
+
+    await delay(100);
+    await gestureSimulator(canvas, 'touchstart', { clientX: 38, clientY: 20 });
+    expect(tooltipController.tooltip.container.container.get('visible')).to.equal(true);
+    expect(tooltipController.tooltip.items.length).to.equal(1);
   });
 
   it('show xTip in transposed coordinate, snap = true', () => {
