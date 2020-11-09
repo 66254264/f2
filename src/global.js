@@ -2,7 +2,7 @@ import Theme from './theme';
 import { deepMix } from './util/common';
 
 const Global = {
-  version: '3.7.7',
+  version: '3.7.8',
   scales: {},
   widthRatio: {
     column: 1 / 2,
@@ -13,7 +13,7 @@ const Global = {
 };
 
 Global.setTheme = function(theme) {
-  deepMix(this, theme);
+  deepMix(Global, theme);
 };
 
 Global.setTheme(Theme);
