@@ -7,7 +7,7 @@ import {
   isObject, deepMix
 } from '../util/common';
 
-import Element from '../graphic/element';
+import Element from '../graphic/engine/element';
 import Timeline from '../graphic/animate/timeline';
 import Animator from '../graphic/animate/animator';
 import Animate from './animate';
@@ -270,7 +270,11 @@ function addAnimate(cache, shapes, canvas) {
       if (isFunction(animate)) {
         animate(updateShape, animateCfg, coord);
       } else {
-        updateShape.attr(cacheAttrs);
+        const startState = {};
+        each(endState, function(value, key) {
+          startState[key] = cacheAttrs[key];
+        });
+        updateShape.attr(startState);
         updateShape.animate().to({
           attrs: endState,
           duration: animateCfg.duration,
