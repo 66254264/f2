@@ -6,10 +6,15 @@ lib/
 es/
 mocks/
 node_modules/
+miniprogram_npm/
 demos/assets/
 lib/
 demos/index.html
+site/
 docs/
 public
 types/
 types-test/
+**/*.test.ts
+**/*.test.tsx
+**/*.test.js

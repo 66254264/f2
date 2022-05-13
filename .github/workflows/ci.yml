@@ -2,9 +2,9 @@
 
 name: CI
 
-# Controls when the action will run. Triggers the workflow on push or pull request 
+# Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
-on: [push,pull_request]
+on: [push, pull_request]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -19,19 +19,42 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - uses: actions/checkout@v2
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
 
-    # Runs a single command using the runners shell
-    - name: Use Node.js ${{ matrix.node_version }}
-      uses: actions/setup-node@v1
-      with: 
-         node-version: ${{ matrix.node_version }}
+      # Runs a single command using the runners shell
+      - name: Use Node.js ${{ matrix.node_version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node_version }}
 
-    # Runs a set of commands using the runners shell
-    - name: npm install, ci
-      run: |
-        npm install
-        npm run ci
-      env:
-        CI: true
+      - name: install
+        run: |
+          yarn install
+
+      - name: lint
+        run: |
+          npm run lint
+        env:
+          CI: true
+
+      - name: build
+        run: |
+          npm run build
+        env:
+          CI: true
+
+      - name: test
+        run: |
+          npm run test
+        env:
+          CI: true
+
+      - name: save diff snapshot
+        uses: actions/upload-artifact@v2
+        if: ${{ failure() }}
+        with:
+          name: diff snapshot
+          path: |
+            packages/**/__image_snapshots__/__diff_output__/*.png
+            !**/node_modules/**
