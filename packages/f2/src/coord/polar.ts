@@ -1,6 +1,7 @@
 import Base from './base';
 import { Range, Option } from './types';
-import { Vector2, Matrix } from '@antv/f2-graphic';
+import { mat2d, vec2 } from 'gl-matrix';
+import { vec2Zero, vec2AngleTo } from '../util/vector';
 
 interface PolarOption extends Option {
   radius: number; // 内半径比例
@@ -76,26 +77,27 @@ class Polar extends Base {
     const [xStart, xEnd] = x;
     const [yStart, yEnd] = y;
 
-    const m = [1, 0, 0, 1, 0, 0];
-    Matrix.rotate(m, m, xStart);
+    const m = ([1, 0, 0, 1, 0, 0] as unknown) as mat2d;
 
-    let startV = [1, 0];
-    Vector2.transformMat2d(startV, startV, m);
+    mat2d.rotate(m, m, xStart);
+
+    let startV = ([1, 0] as unknown) as vec2;
+    vec2.transformMat2d(startV, startV, m);
     startV = [startV[0], startV[1]];
 
-    const pointV = [point.x - center.x, point.y - center.y];
-    if (Vector2.zero(pointV)) {
+    const pointV = ([point.x - center.x, point.y - center.y] as unknown) as vec2;
+    if (vec2Zero(pointV)) {
       return {
         x: 0,
         y: 0,
       };
     }
 
-    let theta = Vector2.angleTo(startV, pointV, xEnd < xStart);
+    let theta = vec2AngleTo(startV, pointV, xEnd < xStart);
     if (Math.abs(theta - Math.PI * 2) < 0.001) {
       theta = 0;
     }
-    const l = Vector2.length(pointV);
+    const l = vec2.length(pointV);
     let percentX = theta / (xEnd - xStart);
     percentX = xEnd - xStart > 0 ? percentX : -percentX;
     const percentY = (l - yStart) / (yEnd - yStart);

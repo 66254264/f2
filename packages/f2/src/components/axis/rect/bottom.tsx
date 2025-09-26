@@ -1,24 +1,27 @@
-import { jsx } from '../../../jsx';
+import { jsx, TextStyleProps } from '@antv/f-engine';
 import { RectProps } from '../types';
-import { TextAttrs } from '../../../types';
+import { isArray } from '@antv/util';
 
 export default (props: RectProps<'bottom'>, context) => {
   const { ticks, coord, style, animation } = props;
-  const { px2hd } = context;
+  const { px2hd, measureText } = context;
   const { left, right, bottom } = coord;
-  const { grid, tickLine, line, labelOffset, label } = style;
+  const { grid, tickLine, line, labelOffset, label, symbol } = style;
+  const filterTicks = ticks.filter((d) => !isNaN(d.value));
+  const symbols = isArray(symbol) ? symbol : [symbol];
+  const { length: tickLineLength, ...tickLineStyle } = tickLine || {};
 
   return (
     <group>
       {grid
-        ? ticks.map((tick) => {
+        ? filterTicks.map((tick) => {
             const { points, tickValue, gridStyle } = tick;
             const start = points[0];
             const end = points[points.length - 1];
             return (
               <line
-                key={tickValue}
-                attrs={{
+                key={`grid-${tickValue}`}
+                style={{
                   x1: start.x,
                   y1: start.y,
                   x2: end.x,
@@ -30,27 +33,39 @@ export default (props: RectProps<'bottom'>, context) => {
             );
           })
         : null}
-      {tickLine && tickLine.length
-        ? ticks.map((tick) => {
+      {tickLineLength
+        ? filterTicks.map((tick) => {
             const { points, tickValue } = tick;
             const start = points[0];
             return (
               <line
-                key={tickValue}
-                attrs={{
+                key={`tickLine-${tickValue}`}
+                style={{
                   x1: start.x,
                   y1: start.y,
                   x2: start.x,
-                  y2: start.y + px2hd(tickLine.length),
-                  ...tickLine,
+                  y2: start.y + px2hd(tickLineLength),
+                  ...tickLineStyle,
                 }}
               />
             );
           })
         : null}
+      {symbols[0] ? (
+        <marker
+          style={{
+            x: right,
+            y: bottom,
+            transform: 'rotate(90deg)',
+            transformOrigin: '50% 50%',
+            ...symbols[0],
+            symbol: symbols[0].type,
+          }}
+        />
+      ) : null}
       {line ? (
         <line
-          attrs={{
+          style={{
             x1: left,
             y1: bottom,
             x2: right,
@@ -59,14 +74,27 @@ export default (props: RectProps<'bottom'>, context) => {
           }}
         />
       ) : null}
+      {symbols[1] ? (
+        <marker
+          style={{
+            x: left,
+            y: bottom,
+            transform: 'rotate(-90deg)',
+            transformOrigin: '50% 50%',
+            ...symbols[0],
+            symbol: symbols[1].type,
+          }}
+        />
+      ) : null}
       {label
-        ? ticks.map((tick, index) => {
-            const { points, text, tickValue, labelStyle } = tick;
-            const start = points[0];
+        ? filterTicks.map((tick, index) => {
+            const { points, text, tickValue, labelStyle, visible = true } = tick;
+            if (!visible) return null;
+            const { x, y } = points[0];
             const { align = 'center' } = labelStyle || label || {};
-            const textAttrs: TextAttrs = {
-              x: start.x,
-              y: start.y + labelOffset,
+            const textAttrs: TextStyleProps = {
+              x,
+              y: y + labelOffset,
               textBaseline: 'top',
               text,
               ...label,
@@ -81,14 +109,23 @@ export default (props: RectProps<'bottom'>, context) => {
               } else {
                 textAttrs.textAlign = 'center';
               }
+            } else if (align === 'auto') {
+              textAttrs.textAlign = 'center';
+              const { width } = measureText(text, textAttrs);
+              const halfWidth = width / 2;
+              if (x - halfWidth < left) {
+                textAttrs.x = left + width / 2;
+              } else if (x + halfWidth > right) {
+                textAttrs.x = right - width / 2;
+              }
             } else {
               textAttrs.textAlign = align;
             }
 
             return (
               <text
-                key={tickValue}
-                attrs={textAttrs}
+                key={`text-${tickValue}`}
+                style={textAttrs}
                 animation={
                   animation || {
                     appear: {

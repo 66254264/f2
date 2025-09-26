@@ -1,8 +1,8 @@
 import { each, isString, isNil, isFunction, isNumber, isArray, upperFirst } from '@antv/util';
 import * as Attrs from '../attr';
-import equal from '../base/equal';
+import { isEqual } from '@antv/f-engine';
 import ScaleController from './scale';
-import { Scale, ScaleConfig } from '@antv/scale';
+import { Scale, ScaleConfig } from '../deps/f2-scale/src';
 
 type AttrOption = {
   field?: string | Record<any, any>;
@@ -18,7 +18,7 @@ type AttrsRange = {
 
 const { Identity, Linear, Category } = Attrs;
 // 需要映射的属性名
-const ATTRS = ['x', 'y', 'color', 'size', 'shape'];
+export const ATTRS = ['x', 'y', 'color', 'size', 'shape'];
 // 分组处理的属性
 const GROUP_ATTRS = ['color', 'size', 'shape'];
 
@@ -86,6 +86,7 @@ class AttrController {
     }
     const options = {};
     const ranges = this.attrsRange;
+
     ATTRS.forEach((attrName: Attr) => {
       if (!props[attrName]) return;
       const option = this.parseOption(props[attrName], attrName);
@@ -172,7 +173,7 @@ class AttrController {
     const nextAttrs = {};
     each(nextOptions, (nextOption, attrName: string) => {
       const lastOption = lastOptions[attrName];
-      if (equal(nextOption, lastOption)) {
+      if (isEqual(nextOption, lastOption)) {
         nextAttrs[attrName] = lastAttrs[attrName];
       }
       const { field, justifyContent } = nextOption;

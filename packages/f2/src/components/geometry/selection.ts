@@ -1,7 +1,6 @@
 import { isFunction } from '@antv/util';
-import Component from '../../base/component';
-import { ShapeAttrs, Point } from '../../types';
-import equal from '../../base/equal';
+import { Component, isEqual as equal, ShapeStyleProps } from '@antv/f-engine';
+import { ChartChildProps } from '../../chart';
 
 function isEqual(origin1, origin2, fields: string[]) {
   if (origin1 === origin2) {
@@ -16,18 +15,18 @@ function isEqual(origin1, origin2, fields: string[]) {
   return true;
 }
 
-type StyleType = (record: any) => ShapeAttrs;
+type StyleType = (record: any) => ShapeStyleProps;
 
 export interface SelectionProps {
   selection?: {
     triggerOn?: 'click' | 'press' | string;
     type?: 'single' | 'multiple';
     defaultSelected?: any[];
-    selectedStyle?: ShapeAttrs | StyleType;
-    unSelectedStyle?: ShapeAttrs | StyleType;
+    selectedStyle?: ShapeStyleProps | StyleType;
+    unSelectedStyle?: ShapeStyleProps | StyleType;
     cancelable?: boolean;
+    onChange?: Function;
   };
-  [k: string]: any;
 }
 
 export interface SelectionState {
@@ -37,7 +36,7 @@ export interface SelectionState {
 class Selection<
   P extends SelectionProps = SelectionProps,
   S extends SelectionState = SelectionState
-> extends Component<P, S> {
+> extends Component<P & ChartChildProps, S> {
   constructor(props: P, context) {
     super(props, context);
 
@@ -48,18 +47,20 @@ class Selection<
   }
 
   didMount() {
-    const { props, state, container } = this;
-    const canvas = container.get('canvas');
+    const { props, state } = this;
     const { selection, chart } = props;
     if (!selection) return;
     // 默认为 click
-    const { triggerOn = 'click' } = selection;
-    canvas.on(triggerOn, (ev) => {
-      const { points } = ev;
-      const records = this.getSnapRecords(points[0]);
+    const { triggerOn = 'click', onChange } = selection;
+    chart.on(triggerOn, (ev) => {
+      const { points, canvasX: x, canvasY: y } = ev;
+      const point = triggerOn === 'click' ? { x, y } : points[0];
+      const records = this.getSnapRecords(point);
       const { type = 'single', cancelable = true } = selection;
+
       if (!records || !records.length) {
         if (cancelable) {
+          onChange && onChange({ selected: null })
           this.setState({
             selected: null,
           } as S);
@@ -70,6 +71,7 @@ class Selection<
       const { selected } = state;
       const origins = records.map((record) => record.origin);
       if (!selected || !selected.length) {
+        onChange && onChange({ selected: origins })
         this.setState({
           selected: origins,
         } as S);
@@ -77,6 +79,7 @@ class Selection<
 
       if (type === 'single') {
         if (!cancelable) {
+          onChange && onChange({ selected: origins })
           this.setState({
             selected: origins,
           } as S);
@@ -88,6 +91,7 @@ class Selection<
             newSelected.push(record.origin);
           }
         });
+        onChange && onChange({ selected: newSelected })
         this.setState({
           selected: newSelected,
         } as S);
@@ -112,6 +116,7 @@ class Selection<
         .map((key) => selectedMap[key])
         .filter(Boolean);
 
+      onChange && onChange({ selected: newSelected })
       this.setState({
         selected: newSelected,
       } as S);
@@ -131,7 +136,7 @@ class Selection<
     }
   }
 
-  getSnapRecords(_point: Point) {
+  getSnapRecords(_point) {
     return null;
   }
 
@@ -161,6 +166,7 @@ class Selection<
     }
     const { selection } = props;
     const { selectedStyle, unSelectedStyle } = selection;
+
     const isSelected = this.isSelected(record);
     if (isSelected) {
       return isFunction(selectedStyle) ? selectedStyle(record) : selectedStyle;

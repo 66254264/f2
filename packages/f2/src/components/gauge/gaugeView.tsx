@@ -1,6 +1,20 @@
-import { jsx } from '../../jsx';
+import { jsx } from '@antv/f-engine';
+import { GaugeProps } from './withGauge';
 
-export default (props) => {
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface Tick {
+  tickValue: number;
+  start: Point;
+  end: Point;
+}
+
+export { GaugeProps };
+
+export default (props: GaugeProps) => {
   const { center, startAngle, endAngle, r, percent, ticks } = props;
   const { x, y } = center;
   const diff = endAngle - startAngle;
@@ -8,11 +22,11 @@ export default (props) => {
     <group>
       <arc
         attrs={{
-          x,
-          y,
+          cx: x,
+          cy: y,
           r,
-          startAngle,
-          endAngle,
+          startAngle: `${startAngle} rad`,
+          endAngle: `${endAngle} rad`,
           lineWidth: '20px',
           lineCap: 'round',
           stroke: '#e7e7e7',
@@ -20,11 +34,11 @@ export default (props) => {
       />
       <arc
         attrs={{
-          x,
-          y,
+          cx: x,
+          cy: y,
           r,
-          startAngle,
-          endAngle: startAngle,
+          startAngle: `${startAngle} rad`,
+          endAngle: `${startAngle} rad`,
           lineWidth: '40px',
           lineCap: 'round',
           stroke: '#0075ff',
@@ -35,10 +49,10 @@ export default (props) => {
             duration: 500,
             property: ['endAngle'],
             start: {
-              endAngle: startAngle,
+              endAngle: `${startAngle} rad`,
             },
             end: {
-              endAngle: startAngle + diff * percent,
+              endAngle: `${startAngle + diff * percent} rad`,
             },
           },
         }}

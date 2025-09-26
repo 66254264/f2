@@ -1,6 +1,6 @@
 import { ScaleValues, ZoomRange } from './index';
-import { Scale, getTickMethod } from '@antv/scale';
-import { getRange } from '@antv/util';
+import { Scale, getTickMethod } from '../../deps/f2-scale/src';
+import { getRange, isArray } from '@antv/util';
 import { toTimeStamp } from '../../util';
 
 // 判断新老values是否相等，这里只要判断前后是否相等即可
@@ -21,8 +21,10 @@ function updateCategoryRange(scale: Scale, originScale: Scale, range: ZoomRange)
   const valueEnd = end * len;
 
   // 保持滑动时个数的稳定
-  const count = Math.round(valueEnd - valueStart);
-  const sliceSatrt = Math.round(valueStart);
+  const diff = valueEnd - valueStart;
+  const precision = parseFloat(diff.toFixed(3)); // js 计算精度问题
+  const count = Math.round(precision);
+  const sliceSatrt = Math.min(Math.round(valueStart), len - count);
 
   // 从原始数据里截取需要显示的数据
   const newValues = originValues.slice(sliceSatrt, sliceSatrt + count);
@@ -40,6 +42,7 @@ function updateCategoryRange(scale: Scale, originScale: Scale, range: ZoomRange)
   if (isValuesEqual(currentValues, newValues) && isValuesEqual(currentTicks, newTicks)) {
     return;
   }
+
   scale.change({
     values: newValues,
     ticks: newTicks,
@@ -90,7 +93,12 @@ function updateFollow(scales: Scale[], mainScale: Scale, data) {
     data.forEach((item) => {
       const value = mainType === 'timeCat' ? toTimeStamp(item[mainField]) : item[mainField];
       if (mainValuesMap[value]) {
-        values.push(item[followField]);
+        const followItemValue = item[followField];
+        if (isArray(followItemValue)) {
+          values.push(...followItemValue);
+        } else {
+          values.push(followItemValue);
+        }
       }
     });
     return updateScale(scale, values);

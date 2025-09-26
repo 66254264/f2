@@ -30,7 +30,7 @@ describe('条形图', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -48,7 +48,7 @@ describe('条形图', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -66,7 +66,7 @@ describe('条形图', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -84,7 +84,24 @@ describe('条形图', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
+
+    await delay(1000);
+    expect(context).toMatchImageSnapshot();
+  });
+  it('堆叠条形图 - type = stack', async () => {
+    const chartRef = { current: null };
+    const context = createContext('堆叠条形图');
+    const { type, props } = (
+      <Canvas context={context} pixelRatio={1}>
+        <Chart ref={chartRef} data={data} coord={{ transposed: true }}>
+          <Interval x="genre" y="sold" color="type" adjust={{ type: 'stack' }} />
+        </Chart>
+      </Canvas>
+    );
+
+    const canvas = new Canvas(props);
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();

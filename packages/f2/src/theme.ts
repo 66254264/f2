@@ -4,6 +4,13 @@ const axis = {
     stroke: '#E8E8E8',
     lineWidth: '1px',
   },
+  symbol: {
+    fill: '#E8E8E8',
+    radius: '10px',
+  },
+  tickLine: {
+    stroke: '#E8E8E8',
+  },
   label: {
     fill: '#808080',
     fontSize: '20px',
@@ -75,17 +82,22 @@ const guide = {
       stroke: '#1890ff',
     },
   },
+  polyline: {
+    style: {
+      lineWidth: '4px',
+      lineJoin: 'round',
+      lineCap: 'round',
+    },
+    offsetX: 0,
+    offsetY: 0,
+  },
 };
 
 const chart = {
   padding: ['30px', '30px', '30px', '30px'],
 };
 
-const Theme = {
-  fontFamily:
-    '"Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif',
-  pixelRatio: 1,
-  padding: [0, 0, 0, 0],
+export default {
   chart,
   colors: ['#1890FF', '#2FC25B', '#FACC14', '#223273', '#8543E0', '#13C2C2', '#3436C7', '#F04864'],
   shapes: {
@@ -104,6 +116,15 @@ const Theme = {
       },
       smooth: {
         smooth: true,
+      },
+      'step-start': {
+        step: 'start',
+      },
+      'step-middle': {
+        step: 'middle',
+      },
+      'step-end': {
+        step: 'end',
       },
       dash: {
         lineDash: ['8px', '8px'],
@@ -129,5 +150,3 @@ const Theme = {
   axis,
   guide,
 };
-
-export default Theme;

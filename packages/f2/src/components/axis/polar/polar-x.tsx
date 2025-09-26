@@ -1,14 +1,12 @@
-import { jsx } from '../../../jsx';
-import { Vector2 } from '@antv/f2-graphic';
+import { jsx } from '@antv/f-engine';
+import { vec2 } from 'gl-matrix';
 import { PolarProps } from '../types';
-// const { Vector2 } = G;
 
 // 相对圆心偏移量的点
 function getOffsetPoint(center, point, offset) {
   const vectorX = point.x - center.x;
   const vectorY = point.y - center.y;
-  const vector = [vectorX, vectorY];
-  const vectorLength = Vector2.length(vector);
+  const vectorLength = vec2.length([vectorX, vectorY]);
   const offsetLength = vectorLength + offset;
 
   const x = (vectorX / vectorLength) * offsetLength;
@@ -57,9 +55,11 @@ const Line = (props) => {
     return (
       <arc
         attrs={{
-          x: center.x,
-          y: center.y,
+          cx: center.x,
+          cy: center.y,
           r: radius,
+          startAngle: 0,
+          endAngle: 360,
           ...line,
         }}
       />
@@ -74,7 +74,7 @@ const Line = (props) => {
   return (
     <polyline
       attrs={{
-        points,
+        points: points.map((d) => [d.x, d.y]),
         ...line,
       }}
     />
@@ -82,14 +82,15 @@ const Line = (props) => {
 };
 
 export default (props: PolarProps) => {
-  const { ticks, coord, style, grid: gridType } = props;
+  const { ticks: originTicks, coord, style, grid: gridType } = props;
   const { center } = coord;
   const { grid, tickLine, line, labelOffset, label } = style;
 
+  const ticks = originTicks.filter((d) => !isNaN(d.value));
   const firstTicks = ticks[0];
   const { points } = firstTicks;
   const end = points[points.length - 1];
-  const radius = Vector2.length([end.x - center.x, end.y - center.y]);
+  const radius = vec2.length([end.x - center.x, end.y - center.y]);
 
   return (
     <group>

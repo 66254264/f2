@@ -11,11 +11,11 @@ jobs:
   # This workflow contains a single job called "ci"
   ci:
     # The type of runner that the job will run on
-    runs-on: macos-latest
+    runs-on: macos-14
 
     strategy:
       matrix:
-        node_version: ['12']
+        node_version: ['20']
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -31,6 +31,14 @@ jobs:
       - name: install
         run: |
           yarn install
+          
+      - name: check npm dependencies
+        run: |
+          npm ls --all || true
+
+      - name: List fonts in CI
+        run: |
+          fc-list
 
       - name: lint
         run: |
@@ -51,7 +59,7 @@ jobs:
           CI: true
 
       - name: save diff snapshot
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
           name: diff snapshot

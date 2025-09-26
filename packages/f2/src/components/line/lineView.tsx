@@ -1,6 +1,5 @@
+import { createRef, jsx } from '@antv/f-engine';
 import { deepMix, isArray } from '@antv/util';
-import { jsx } from '../../jsx';
-import { LineViewProps } from './types';
 
 function concatPoints(children) {
   let result = [];
@@ -40,71 +39,76 @@ function getPoint(points, t: number) {
   }
 }
 
-function AnimationEndView(props) {
-  const { record, appear, EndView } = props;
-  const { children } = record;
-  const points = concatPoints(children);
-  const { origin } = points[0];
+export default (props) => {
+  const { records, coord, animation, endView: EndView, clip } = props;
 
-  return (
-    <group
-      animation={{
-        appear: {
-          easing: appear.easing,
-          duration: appear.duration,
-          onFrame: function(t) {
-            // 这段逻辑有点恶心。。
-            const { element } = this;
-            const children = element.get('children');
-            const point = getPoint(points, t);
-            children.forEach((child) => {
-              child.moveTo(point.x, point.y);
-            });
+  const { left, top, width, height, center, startAngle, endAngle, radius } = coord as any;
+
+  const appear = coord.isPolar
+    ? {
+        easing: 'quadraticOut',
+        duration: 450,
+        clip: {
+          type: 'sector',
+          property: ['endAngle'],
+          style: {
+            cx: center.x,
+            cy: center.y,
+            startAngle: `${startAngle}rad`,
+            r: radius,
+          },
+          start: {
+            endAngle: `${startAngle}rad`,
+          },
+          end: {
+            endAngle: `${endAngle}rad`,
           },
         },
+      }
+    : {
+        easing: 'quadraticOut',
+        duration: 450,
+        clip: {
+          type: 'rect',
+          property: ['width'],
+          style: {
+            x: left,
+            y: top,
+            height: height,
+          },
+          start: {
+            width: 0,
+          },
+          end: {
+            width: width,
+          },
+        },
+      };
+  return (
+    <group
+      style={{
+        clip,
       }}
     >
-      <EndView origin={origin} />
-    </group>
-  );
-}
-
-export default (props: LineViewProps) => {
-  const { records, coord, animation, endView: EndView } = props;
-  const { left, top, width, height } = coord;
-
-  const appear = {
-    easing: 'linear',
-    duration: 450,
-    clip: {
-      type: 'rect',
-      property: ['width'],
-      attrs: {
-        x: left,
-        y: top,
-        height: height,
-      },
-      start: {
-        width: 0,
-      },
-      end: {
-        width: width,
-      },
-    },
-  };
-  return (
-    <group>
       {records.map((record) => {
         const { key, children } = record;
+        const points = concatPoints(children);
+
+        const ref = createRef();
         return (
           <group key={key}>
             {children.map((child) => {
               const { points, color, size, shape } = child;
+              const fliterPoints = points.filter((point) => !isNaN(point.x) && !isNaN(point.y));
+              if (fliterPoints.length === 0) return;
+
               return (
                 <polyline
-                  attrs={{
-                    points: points.map((point) => {
-                      return { x: point.x, y: point.y };
+                  key={key}
+                  // ref={ref}
+                  style={{
+                    points: fliterPoints.map((point) => {
+                      return [point.x, point.y];
                     }),
                     stroke: color,
                     ...shape,
@@ -124,8 +128,40 @@ export default (props: LineViewProps) => {
                 />
               );
             })}
+
             {EndView ? (
-              <AnimationEndView record={record} EndView={EndView} appear={appear} />
+              <group
+                ref={ref}
+                // style={{
+                //   offset: ref,
+                // }}
+                animation={deepMix(
+                  {
+                    appear: {
+                      easing: 'quadraticOut',
+                      duration: 450,
+                      onFrame: function(t) {
+                        // 这段逻辑TODO:修改为offsetDistance
+                        const children = ref.current.getChildren();
+                        const point = getPoint(points, t);
+                        children.forEach((child) => {
+                          child.moveTo(point.x, point.y);
+                        });
+                      },
+                      // property: ['offsetDistance'],
+                      // start: {
+                      //   offsetDistance: 0,
+                      // },
+                      // end: {
+                      //   offsetDistance: 1,
+                      // },
+                    },
+                  },
+                  animation
+                )}
+              >
+                <EndView origin={points[0]?.origin} />
+              </group>
             ) : null}
           </group>
         );

@@ -1,7 +1,16 @@
-import { jsx } from '../../jsx';
+import { jsx } from '@antv/f-engine';
 
 export default (props) => {
-  const { lineStyle, anchorStyle, labels, label1OffsetY, label2OffsetY, triggerRef } = props;
+  const {
+    lineStyle,
+    anchorStyle,
+    labels,
+    label1OffsetY,
+    label2OffsetY,
+    triggerRef,
+    onClick,
+    showAnchor,
+  } = props;
 
   return (
     <group ref={triggerRef}>
@@ -10,21 +19,31 @@ export default (props) => {
         const end = points[points.length - 1];
 
         return (
-          <group>
+          <group
+            onClick={
+              onClick
+                ? () => {
+                    onClick(label);
+                  }
+                : null
+            }
+          >
             {/* 锚点 */}
-            <circle
-              attrs={{
-                r: '4px',
-                x: anchor.x,
-                y: anchor.y,
-                fill: color,
-                ...anchorStyle,
-              }}
-            />
+            {showAnchor && (
+              <circle
+                attrs={{
+                  r: '4px',
+                  cx: anchor.x,
+                  cy: anchor.y,
+                  fill: color,
+                  ...anchorStyle,
+                }}
+              />
+            )}
             {/* 线 */}
             <polyline
               attrs={{
-                points,
+                points: points.map((d) => [d.x, d.y]),
                 lineWidth: '2px',
                 stroke: color,
                 ...lineStyle,
@@ -39,7 +58,6 @@ export default (props) => {
                 fontSize: '24px',
                 lineHeight: '24px',
                 fill: color,
-                textBaseline: 'bottom',
                 textAlign: side === 'left' ? 'left' : 'right',
                 ...label1,
               }}

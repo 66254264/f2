@@ -1,6 +1,5 @@
-import { jsx } from '../../../src/jsx';
-import { Rect } from '../../../src/coord';
-import { Canvas, Chart, Area, Line, Axis, Interval, Legend } from '../../../src';
+import { jsx } from '../../../src';
+import { Canvas, Chart, Area, Line, Axis, Legend } from '../../../src';
 import { createContext, delay } from '../../util';
 
 const data = [
@@ -261,8 +260,18 @@ describe('面积图', () => {
           >
             <Axis field="time" />
             <Axis field="tem" />
-            <Area x="time" y="tem" color="l(90) 0:#1890FF 1:#f7f7f7" shape="smooth" />
-            <Line x="time" y="tem" color="l(90) 0:#1890FF 1:#f7f7f7" shape="smooth" />
+            <Area
+              x="time"
+              y="tem"
+              color="linear-gradient(90deg, #1890FF, #f7f7f7)"
+              shape="smooth"
+            />
+            <Line
+              x="time"
+              y="tem"
+              color="linear-gradient(90deg, #1890FF, #f7f7f7)"
+              shape="smooth"
+            />
           </Chart>
         </Canvas>
       );
@@ -800,7 +809,7 @@ describe('面积图', () => {
         </Canvas>
       );
       const canvas = new Canvas(props);
-      canvas.render();
+      await canvas.render();
 
       await delay(1000);
       expect(context).toMatchImageSnapshot();
@@ -831,7 +840,7 @@ describe('面积图', () => {
         </Canvas>
       );
       const canvas = new Canvas(props);
-      canvas.render();
+      await canvas.render();
 
       await delay(1000);
       expect(context).toMatchImageSnapshot();
@@ -990,7 +999,7 @@ describe('面积图', () => {
         </Canvas>
       );
       const canvas = new Canvas(props);
-      canvas.render();
+      await canvas.render();
 
       await delay(1000);
       expect(context).toMatchImageSnapshot();

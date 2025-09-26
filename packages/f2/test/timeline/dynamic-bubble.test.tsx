@@ -72,7 +72,7 @@ const countrys = [
 ];
 
 describe('Chart', () => {
-  it('Chart render', () => {
+  it('Chart render', async () => {
     const { type, props } = (
       <Canvas context={context} pixelRatio={2}>
         {/* <Timeline>
@@ -124,7 +124,7 @@ describe('Chart', () => {
                   scale={{
                     population: {
                       type: 'pow',
-                      base: 2,
+                      exponent: 2,
                     },
                     life: {
                       min: 0,
@@ -179,6 +179,6 @@ describe('Chart', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
   });
 });

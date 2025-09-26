@@ -2,6 +2,7 @@ import { jsx } from '../../../../src';
 import { Polar, Rect } from '../../../../src/coord';
 import { isArray } from '@antv/util';
 import { Canvas, Chart, Component } from '../../../../src';
+import { Gesture } from '@antv/f-engine';
 import { Interval } from '../../../../src/components';
 import { createContext, delay, gestureSimulator } from '../../../util';
 
@@ -20,8 +21,8 @@ class Test extends Component {
 
   _handleEvent = (ev) => {
     const { chart } = this.props;
-    const point = ev.points[0];
-    const pieData = chart.getSnapRecords(point);
+    const { x, y } = ev;
+    const pieData = chart.getSnapRecords({ x, y });
     if (isArray(pieData) && pieData.length > 0) {
       this.setState({ record: pieData[0] });
     }
@@ -30,7 +31,8 @@ class Test extends Component {
   _initEvent() {
     const { context } = this;
     const { canvas } = context;
-    canvas.on('click', this._handleEvent);
+    const hammer = new Gesture(canvas);
+    hammer.on('click', this._handleEvent);
   }
 
   render() {
@@ -100,7 +102,7 @@ describe('饼图', () => {
           ref={chartRef}
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
             transposed: true,
           }}
         >
@@ -118,7 +120,46 @@ describe('饼图', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await delay(1000);
+    await canvas.render();
+
+    await delay(1000);
+    expect(context).toMatchImageSnapshot();
+  });
+
+  it('圆角圆环图', async () => {
+    const context = createContext('圆角圆环图');
+    const chartRef = { current: null };
+    const { type, props } = (
+      <Canvas context={context} pixelRatio={1}>
+        <Chart
+          ref={chartRef}
+          data={data}
+          coord={{
+            type: 'polar',
+            transposed: true,
+            innerRadius: 0.5,
+          }}
+        >
+          <Interval
+            x="a"
+            y="percent"
+            adjust="stack"
+            color={{
+              field: 'name',
+              range: ['#1890FF', '#13C2C2', '#2FC25B', '#FACC14', '#F04864', '#8543E0'],
+            }}
+            style={{
+              radius: [10, 7, 4, 2],
+            }}
+          />
+        </Chart>
+      </Canvas>
+    );
+
+    const canvas = new Canvas(props);
+    await delay(500);
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -133,7 +174,7 @@ describe('饼图', () => {
           ref={chartRef}
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
             transposed: true,
           }}
         >
@@ -152,8 +193,9 @@ describe('饼图', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
+    await delay(200);
     await gestureSimulator(context.canvas, 'click', { x: 205, y: 76 });
     await delay(1000);
     expect(context).toMatchImageSnapshot();

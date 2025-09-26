@@ -1,7 +1,7 @@
-import { jsx, Canvas, Chart, Timeline, Axis, Interval, TextGuide } from '../../src';
+import { jsx, Canvas, Chart, Timeline, Axis, Interval, Line } from '../../src';
 import { createContext } from '../util';
 
-const context = createContext('动态排序', { width: '300px', height: '500px' });
+const context = createContext('', { width: '300px', height: '500px' });
 
 const data = [
   { type: 'a', genre: 'Sports', sold: 5 },
@@ -16,8 +16,8 @@ const data = [
   { type: 'b', genre: 'Other', sold: 4 },
 ];
 
-describe('Chart', () => {
-  it('Chart render', () => {
+describe('Interval', () => {
+  it('adjust change', async () => {
     const { type, props } = (
       <Canvas context={context} pixelRatio={2}>
         <Timeline delay={200}>
@@ -36,6 +36,6 @@ describe('Chart', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
   });
 });

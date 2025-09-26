@@ -1,4 +1,4 @@
-import { jsx } from '../../jsx';
+import { jsx } from '@antv/f-engine';
 import SunburstView from './sunburstView';
 import IcicleView from './icicleView';
 

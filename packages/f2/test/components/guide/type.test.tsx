@@ -29,7 +29,7 @@ const data = [
 ];
 
 describe('Guide', () => {
-  it('TextGuide', () => {
+  it('TextGuide', async () => {
     const context = createContext('TextGuide');
     const { type, props } = (
       <Canvas context={context}>
@@ -58,7 +58,7 @@ describe('Guide', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
   });
 
   it('LineGuide', async () => {
@@ -92,10 +92,10 @@ describe('Guide', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
   });
 
-  it('PointGuide', () => {
+  it('PointGuide', async () => {
     const context = createContext('PointGuide');
     const { props } = (
       <Canvas context={context}>
@@ -123,10 +123,10 @@ describe('Guide', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
   });
 
-  it('ArcGuide', () => {
+  it('ArcGuide', async () => {
     const context = createContext('ArcGuide');
     const { type, props } = (
       <Canvas context={context}>
@@ -138,7 +138,7 @@ describe('Guide', () => {
             },
           ]}
           coord={{
-            type: Polar,
+            type: 'polar',
             transposed: true,
             innerRadius: 0.8,
           }}
@@ -171,10 +171,10 @@ describe('Guide', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
   });
 
-  it('RectGuide', () => {
+  it('RectGuide', async () => {
     const context = createContext('RectGuide');
     const data = [
       {
@@ -251,7 +251,7 @@ describe('Guide', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
   });
 
   it('TagGuide', async () => {
@@ -266,8 +266,63 @@ describe('Guide', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
+    await delay(500);
+    expect(context).toMatchImageSnapshot();
+  });
+
+  it('TagGuide不同方向', async () => {
+    const context = createContext('TagGuide不同方向');
+    const { props } = (
+      <Canvas context={context} animate={false} pixelRatio={1}>
+        <Chart data={data}>
+          <Line x="genre" y="sold" />
+          <TagGuide records={[{ genre: 'Sports', sold: 5 }]} direct="tc" content="tag" />
+          <TagGuide records={[{ genre: 'Strategy', sold: 10 }]} direct="tl" content="tag" />
+          <TagGuide records={[{ genre: 'Action', sold: 20 }]} direct="tr" content="tag" />
+          <TagGuide records={[{ genre: 'Shooter', sold: 20 }]} direct="cl" content="tag" />
+          <TagGuide records={[{ genre: 'Other', sold: 40 }]} direct="cr" content="tag" />
+          <TagGuide records={[{ genre: 'Action', sold: 20 }]} direct="bl" content="tag" />
+          <TagGuide records={[{ genre: 'Sports', sold: 5 }]} direct="bc" content="tag" />
+          <TagGuide records={[{ genre: 'Strategy', sold: 10 }]} direct="br" content="tag" />
+        </Chart>
+      </Canvas>
+    );
+
+    const canvas = new Canvas(props);
+    await canvas.render();
+
+    await delay(500);
+    expect(context).toMatchImageSnapshot();
+  });
+
+  it('TagGuide update', async () => {
+    const context = createContext('TagGuide update');
+    const { props } = (
+      <Canvas context={context} animate={false} pixelRatio={1}>
+        <Chart data={data}>
+          <Line x="genre" y="sold" />
+          <TagGuide records={[{ genre: 'Action', sold: 20 }]} direct="tl" content="long long" />
+        </Chart>
+      </Canvas>
+    );
+
+    const canvas = new Canvas(props);
+    await canvas.render();
+
+    await delay(1000);
+    expect(context).toMatchImageSnapshot();
+    canvas.update(
+      (
+        <Canvas context={context} pixelRatio={1}>
+          <Chart data={data}>
+            <Line x="genre" y="sold" />
+            <TagGuide records={[{ genre: 'Action', sold: 20 }]} direct="tl" content="short" />
+          </Chart>
+        </Canvas>
+      ).props
+    );
     await delay(500);
     expect(context).toMatchImageSnapshot();
   });
@@ -303,7 +358,7 @@ describe('Guide', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();

@@ -59,7 +59,7 @@ describe('Axis 轴', () => {
       </Canvas>
     );
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -72,82 +72,102 @@ describe('Axis 轴', () => {
       {
         Year: '1987',
         NumberNewMicroBrewery: 1,
+        goal: 10,
       },
       {
         Year: '1989',
         NumberNewMicroBrewery: 1,
+        goal: 10,
       },
       {
         Year: '1995',
         NumberNewMicroBrewery: 2,
+        goal: 10,
       },
       {
         Year: '1996',
         NumberNewMicroBrewery: 2,
+        goal: 10,
       },
       {
         Year: '1997',
         NumberNewMicroBrewery: 1,
+        goal: 10,
       },
       {
         Year: '1998',
         NumberNewMicroBrewery: 3,
+        goal: 10,
       },
       {
         Year: '1999',
         NumberNewMicroBrewery: 2,
+        goal: 10,
       },
       {
         Year: '2006',
         NumberNewMicroBrewery: 1,
+        goal: 10,
       },
       {
         Year: '2007',
         NumberNewMicroBrewery: 1,
+        goal: 10,
       },
       {
         Year: '2008',
         NumberNewMicroBrewery: 1,
+        goal: 10,
       },
       {
         Year: '2009',
         NumberNewMicroBrewery: 2,
+        goal: 10,
       },
       {
         Year: '2010',
         NumberNewMicroBrewery: 3,
+        goal: 10,
       },
       {
         Year: '2011',
         NumberNewMicroBrewery: 4,
+        goal: 3,
       },
       {
         Year: '2012',
         NumberNewMicroBrewery: 5,
+        goal: 10,
       },
       {
         Year: '2013',
         NumberNewMicroBrewery: 11,
+        goal: 10,
       },
       {
         Year: '2014',
         NumberNewMicroBrewery: 20,
+        goal: 21,
       },
       {
         Year: '2015',
         NumberNewMicroBrewery: 16,
+        goal: 15,
       },
       {
         Year: '2016',
         NumberNewMicroBrewery: 13,
+        goal: 10,
       },
       {
         Year: '2017',
         NumberNewMicroBrewery: 6,
+        goal: 10,
       },
       {
         Year: '2018',
         NumberNewMicroBrewery: 1,
+        goal: 10,
       },
     ];
     const { props } = (
@@ -157,8 +177,10 @@ describe('Axis 轴', () => {
             field="Year"
             style={{
               label: {
-                rotate: -Math.PI / 2,
-                textAlign: 'end',
+                // rotate: -Math.PI / 2,
+                // @ts-ignore
+                transform: 'rotate(-90deg)',
+                align: 'end',
                 textBaseline: 'middle',
               },
             }}
@@ -169,8 +191,8 @@ describe('Axis 轴', () => {
             y="NumberNewMicroBrewery"
             color={{
               field: 'NumberNewMicroBrewery',
-              callback: function(val) {
-                if (val === 20) {
+              callback: function(val, child) {
+                if (val > child.goal) {
                   return '#1890ff';
                 }
                 return '#66B5FF';
@@ -181,7 +203,7 @@ describe('Axis 轴', () => {
       </Canvas>
     );
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -231,7 +253,37 @@ describe('Axis 轴', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
+
+    await delay(1000);
+    expect(context).toMatchImageSnapshot();
+  });
+
+  it('刻度线', async () => {
+    const context = createContext('tickLine');
+
+    const { type, props } = (
+      <Canvas context={context} pixelRatio={1}>
+        <Chart data={valuationData}>
+          <Axis field="index" />
+          <Axis
+            field="value"
+            formatter={(v) => {
+              return v.toFixed(2) + '%';
+            }}
+            style={{
+              tickLine: {
+                length: 3,
+              },
+            }}
+          />
+          <Line x="index" y="value" color="#2FC25B" />
+        </Chart>
+      </Canvas>
+    );
+
+    const canvas = new Canvas(props);
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -259,7 +311,8 @@ describe('Axis 轴', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
+    await delay(0);
     expect(labelMockCallback.mock.calls[0][2].length).toBeGreaterThan(1);
 
     await delay(1000);
@@ -322,7 +375,7 @@ describe('Axis 轴', () => {
       </Canvas>
     );
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -517,7 +570,48 @@ describe('Axis 轴', () => {
       </Canvas>
     );
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
+
+    await delay(1000);
+    expect(context).toMatchImageSnapshot();
+  });
+
+  it('箭头样式', async () => {
+    const context = createContext('带箭头的坐标轴');
+    const { type, props } = (
+      <Canvas context={context} pixelRatio={1}>
+        <Chart data={valuationData}>
+          <Axis
+            field="index"
+            style={{
+              line: {},
+              symbol: { type: 'arrow' },
+            }}
+          />
+          <Axis
+            field="value"
+            formatter={(v) => {
+              return v.toFixed(2) + '%';
+            }}
+            style={{
+              line: {},
+              symbol: [
+                {
+                  type: 'circle',
+                },
+                {
+                  type: 'arrow',
+                },
+              ],
+            }}
+          />
+          <Line x="index" y="value" color="#2FC25B" />
+        </Chart>
+      </Canvas>
+    );
+
+    const canvas = new Canvas(props);
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -591,7 +685,114 @@ describe('Axis 轴', () => {
       </Canvas>
     );
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
+
+    await delay(1000);
+    expect(context).toMatchImageSnapshot();
+  });
+
+  // 基础
+  it('传入 ticks ', async () => {
+    const context = createContext('传入 ticks');
+
+    const data = [
+      {
+        time: 'Jan',
+        value: 551990,
+      },
+      {
+        time: 'Feb',
+        value: 513513,
+      },
+      {
+        time: 'Mar',
+        value: 538780,
+      },
+      {
+        time: 'Apr',
+        value: 419562,
+      },
+      {
+        time: 'May',
+        value: 332167,
+      },
+      {
+        time: 'Jun',
+        value: 297956,
+      },
+      {
+        time: 'Jul',
+        value: 311760,
+      },
+      {
+        time: 'Aug',
+        value: 330824,
+      },
+    ];
+    const { props } = (
+      <Canvas context={context} pixelRatio={1}>
+        <Chart data={data}>
+          <Axis field="time" ticks={['Jan', 'Apr', 'Aug']} />
+          <Axis field="value" />
+          <Interval x="time" y="value" color="#2FC25B" />
+        </Chart>
+      </Canvas>
+    );
+    const canvas = new Canvas(props);
+    await canvas.render();
+
+    await delay(1000);
+    expect(context).toMatchImageSnapshot();
+  });
+
+  // 定义宽高
+  it('定义宽高', async () => {
+    const context = createContext('定义宽高');
+    const data = [
+      {
+        time: 'Jan',
+        value: 551990,
+      },
+      {
+        time: 'Feb',
+        value: 513513,
+      },
+      {
+        time: 'Mar',
+        value: 538780,
+      },
+      {
+        time: 'Apr',
+        value: 419562,
+      },
+      {
+        time: 'May',
+        value: 332167,
+      },
+      {
+        time: 'Jun',
+        value: 297956,
+      },
+      {
+        time: 'Jul',
+        value: 311760,
+      },
+      {
+        time: 'Aug',
+        value: 330824,
+      },
+    ];
+    const { props } = (
+      <Canvas context={context} pixelRatio={1}>
+        <Chart data={data}>
+          <Axis field="time" style={{ height: '100px' }} />
+          <Axis field="value" style={{ width: '100px' }} />
+          <Interval x="time" y="value" color="#2FC25B" />
+        </Chart>
+      </Canvas>
+    );
+    const canvas = new Canvas(props);
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();

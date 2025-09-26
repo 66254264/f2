@@ -1,28 +1,108 @@
-import { isFunction, each, upperFirst, mix, groupToMap, isObject, flatten } from '@antv/util';
-import Selection, { SelectionState } from './selection';
-import * as Adjust from '../../adjust';
+import {
+  isFunction,
+  each,
+  upperFirst,
+  mix,
+  groupToMap,
+  isObject,
+  flatten,
+  isNull,
+  find,
+} from '@antv/util';
+import { ChartChildProps } from '../../chart';
+import Selection, { SelectionProps, SelectionState } from './selection';
+import { Adjust, Dodge, Jitter, Stack, Symmetric } from '../../deps/f2-adjust/src';
 import { toTimeStamp } from '../../util/index';
-import { GeomType, GeometryProps } from './interface';
-import AttrController from '../../controller/attr';
-import equal from '../../base/equal';
-import { AnimationCycle } from '../../canvas/animation/interface';
-import type { Scale } from '@antv/scale';
+import AttrController, { ATTRS } from '../../controller/attr';
+import { Scale } from '../../deps/f2-scale/src';
+import { AnimationProps, isEqual } from '@antv/f-engine';
+import { AdjustType, AdjustProps } from './Adjust';
+import { DataRecord, DataField } from '../../chart/Data';
+
+const AdjustMap = {
+  Stack: Stack,
+  Dodge: Dodge,
+  Jitter: Jitter,
+  Symmetric: Symmetric,
+};
 
 // 保留原始数据的字段
 const FIELD_ORIGIN = 'origin';
 
+const OVERRIDE_FIELDS_SET = new Set([
+  'color',
+  'normalized',
+  'x',
+  'y',
+  'shapeName',
+  'shape',
+  'selected',
+]);
+
+export type GeometryType = 'line' | 'point' | 'area' | 'polygon' | 'schema' | 'interval';
+
+export interface ColorAttrObject {
+  type?: string;
+  field?: string;
+  range?: any[];
+  callback?: (...args) => any;
+  scale?: any;
+}
+
+export interface SizeAttrObject {
+  type?: string;
+  field?: string;
+  range?: any[];
+  callback?: (...args) => any;
+  scale?: any;
+}
+
+export interface ShapeAttrObject {
+  type?: string;
+  field?: string;
+  range?: any[];
+  callback?: (...args) => any;
+  scale?: any;
+}
+
+export interface GeometryProps<TRecord extends DataRecord = DataRecord> extends SelectionProps {
+  x: DataField<TRecord>;
+  y: DataField<TRecord>;
+  color?: DataField<TRecord> | string | [string, any[]] | ColorAttrObject;
+  size?: DataField<TRecord> | number | string | [string, any[]] | SizeAttrObject;
+  shape?: DataField<TRecord> | number | string | [string, any[]] | ShapeAttrObject;
+  adjust?: AdjustType | AdjustProps;
+  startOnZero?: boolean;
+  style?: any;
+  animation?: AnimationProps;
+  /**
+   * 是否裁剪显示区
+   */
+  viewClip?: boolean;
+
+  onPress?: Function;
+  onPan?: Function;
+  onPressStart?: Function;
+  onPressEnd?: Function;
+  onPanStart?: Function;
+  onPanEnd?: Function;
+}
+
 class Geometry<
-  P extends GeometryProps = GeometryProps,
+  TRecord extends DataRecord = DataRecord,
+  P extends GeometryProps<TRecord> = GeometryProps<TRecord>,
   S extends SelectionState = SelectionState
-> extends Selection<P, S> {
+> extends Selection<P & ChartChildProps, S> {
   isGeometry = true;
-  geomType: GeomType;
+  geomType: GeometryType;
 
   attrs: any;
-  adjust: any;
+  adjust: AdjustProps & { adjust: Adjust };
 
   // 预处理后的数据
   dataArray: any;
+  // data 预处理后，records mapping 前的数据
+  dataRecords: any[];
   records: any[];
   mappedArray: any;
   // x 轴居中
@@ -36,73 +116,107 @@ class Geometry<
   attrController: AttrController;
 
   // 动画配置
-  animation: AnimationCycle;
+  animation: AnimationProps;
 
   getDefaultCfg() {
     return {};
   }
 
-  constructor(props: P, context?) {
+  constructor(props: P & ChartChildProps, context?) {
     super(props, context);
     mix(this, this.getDefaultCfg());
 
-    const { chart, coord } = props;
+    const { chart } = props;
 
     const attrsRange = this._getThemeAttrsRange();
     this.attrController = new AttrController(chart.scale, attrsRange);
-    const { attrController, justifyContent } = this;
+    const { attrController } = this;
 
-    const attrOptions = attrController.getAttrOptions(props, !coord.isCyclic() || justifyContent);
+    const attrOptions = this.getAttrOptions(props);
     attrController.create(attrOptions);
   }
 
-  willReceiveProps(nextProps) {
-    super.willReceiveProps(nextProps);
-    const { props: lastProps, attrController, justifyContent } = this;
-    const { data: nextData, adjust: nextAdjust, zoomRange: nextZoomRange, coord } = nextProps;
-    const { data: lastData, adjust: lastAdjust, zoomRange: lastZoomRange } = lastProps;
-
+  getAttrOptions(props) {
+    const { coord } = props;
+    const { attrController, justifyContent } = this;
     const justifyContentCenter = !coord.isCyclic() || justifyContent;
 
-    const nextAttrOptions = attrController.getAttrOptions(nextProps, justifyContentCenter);
-    const lastAttrOptions = attrController.getAttrOptions(lastProps, justifyContentCenter);
-    if (!equal(nextAttrOptions, lastAttrOptions)) {
+    const args = {};
+    ATTRS.forEach((d) => (args[d] = props[d]));
+
+    const attrOptions = attrController.getAttrOptions(
+      this.context.px2hd(args),
+      justifyContentCenter
+    );
+
+    return attrOptions;
+  }
+
+  willReceiveProps(nextProps) {
+    const { props: lastProps, attrController } = this;
+    const { data: nextData, adjust: nextAdjust, selection } = nextProps;
+    const { data: lastData, adjust: lastAdjust, selection: lastSelection } = lastProps;
+
+    const lastAttrOptions = this.getAttrOptions(lastProps);
+    attrController.attrsRange = this._getThemeAttrsRange();
+    const nextAttrOptions = this.getAttrOptions(nextProps);
+
+    if (!isEqual(nextAttrOptions, lastAttrOptions)) {
       attrController.update(nextAttrOptions);
-      this.records = null;
+      this.dataRecords = null;
     }
 
     // 重新处理数据
     if (nextData !== lastData) {
-      this.records = null;
+      this.dataRecords = null;
     }
 
     // 重新处理数据
     if (nextAdjust !== lastAdjust) {
-      this.records = null;
+      this.dataRecords = null;
     }
 
-    // zoomRange发生变化,records也需要重新计算
-    if (!equal(nextZoomRange, lastZoomRange)) {
-      this.records = null;
+    // selection 发生变化
+    if (!isEqual(selection, lastSelection)) {
+      super.willReceiveProps(nextProps);
     }
   }
 
   willMount() {
     this._createAttrs();
-    if (!this.records) {
+    if (!this.dataRecords) {
       this._processData();
     }
   }
   willUpdate() {
     this._createAttrs();
-    if (!this.records) {
+    if (!this.dataRecords) {
       this._processData();
+    } else {
+      this._readjustData(this.dataRecords);
     }
   }
 
   didMount() {
-    super.didMount();
     this._initEvent();
+    super.didMount();
+    // 更新 attrController
+    this.attrController.attrsRange = this._getThemeAttrsRange();
+  }
+
+  _initEvent() {
+    const { props } = this;
+    const { chart } = props;
+    ['onPressStart', 'onPress', 'onPressEnd', 'onPan', 'onPanStart', 'onPanEnd'].forEach(
+      (eventName) => {
+        if (props[eventName]) {
+          chart.on(eventName.substr(2).toLowerCase(), (ev) => {
+            ev.geometry = this;
+            props[eventName](ev);
+          });
+        }
+      }
+    );
   }
 
   _createAttrs() {
@@ -126,25 +240,68 @@ class Geometry<
     };
   }
 
+  _createAdjust() {
+    const { attrs, props } = this;
+    const { adjust, chart } = props;
+
+    if (!adjust) {
+      return null;
+    }
+    const adjustCfg: AdjustProps =
+      typeof adjust === 'string'
+        ? {
+            type: adjust,
+          }
+        : adjust;
+    const adjustType = upperFirst(adjustCfg.type);
+    const AdjustConstructor = AdjustMap[adjustType];
+    if (!AdjustConstructor) {
+      throw new Error('not support such adjust : ' + adjust);
+    }
+
+    if (adjustType === 'Dodge') {
+      // @ts-ignore
+      adjustCfg.adjustNames = ['x'];
+    }
+
+    const { x, y } = attrs;
+    // @ts-ignore
+    adjustCfg.xField = x.field;
+    // @ts-ignore
+    adjustCfg.yField = y.field;
+
+    const adjustInstance = new AdjustConstructor(adjustCfg);
+
+    this.adjust = {
+      type: adjustCfg.type,
+      adjust: adjustInstance,
+    };
+
+    chart.updateAdjust(this.adjust);
+    return this.adjust;
+  }
+
   _adjustScales() {
     const { attrs, props, startOnZero: defaultStartOnZero } = this;
     const { chart, startOnZero = defaultStartOnZero, coord, adjust } = props;
     const { isPolar, transposed } = coord;
     const { y } = attrs;
-    const yField = y.field;
+
     // 如果从 0 开始，只调整 y 轴 scale
     if (startOnZero) {
-      const { y } = attrs;
       chart.scale.adjustStartZero(y.scale);
     }
     // 饼图的scale调整，关闭nice
-    if (isPolar && transposed && adjust === 'stack') {
-      const { y } = attrs;
+    if (
+      isPolar &&
+      transposed &&
+      (adjust === 'stack' || (adjust as AdjustProps)?.type === 'stack')
+    ) {
       chart.scale.adjustPieScale(y.scale);
     }
 
-    if (adjust === 'stack') {
-      this._updateStackRange(yField, y.scale, this.dataArray);
+    if (adjust === 'stack' || (adjust as AdjustProps)?.type === 'stack') {
+      chart.scale._updateStackRange(y.scale, flatten(this.dataArray));
     }
   }
 
@@ -160,6 +317,7 @@ class Geometry<
       const field = scale.field;
       names.push(field);
     });
+
     const groups = groupToMap(data, names);
     const records = [];
     for (const key in groups) {
@@ -189,76 +347,58 @@ class Geometry<
     const scales = [attrs.x.scale, attrs.y.scale];
     for (let j = 0, len = data.length; j < len; j++) {
       const obj = data[j];
-      const count = Math.min(2, scales.length);
+      const count = scales.length;
       for (let i = 0; i < count; i++) {
         const scale = scales[i];
         if (scale.isCategory) {
           const field = scale.field;
-          obj[field] = scale.translate(obj[field]);
+          const value = scale.translate(obj.origin[field]);
+          obj[field] = value;
         }
       }
     }
   }
 
-  _adjustData(groupedArray) {
-    const { attrs, props } = this;
-    const { adjust } = props;
+  _adjustData(records) {
+    const { adjust } = this;
+    // groupedArray 是二维数组
+    const groupedArray = records.map((record) => record.children);
+
     if (!adjust) {
       return groupedArray;
     }
-    const adjustCfg =
-      typeof adjust === 'string'
-        ? {
-            type: adjust,
-          }
-        : adjust;
-    const adjustType = upperFirst(adjustCfg.type);
-    if (!Adjust[adjustType]) {
-      throw new Error('not support such adjust : ' + adjust);
-    }
-    const { x, y } = attrs;
-    const xField = x.field;
-    const yField = y.field;
-    const adjustInstance = new Adjust[adjustType]({
-      xField,
-      yField,
-      ...adjustCfg,
-    });
 
-    if (adjustType === 'Dodge') {
+    const { attrs } = this;
+    const scales = [attrs.x.scale, attrs.y.scale];
+
+    for (let i = 0, len = groupedArray.length; i < len; i++) {
+      const records = groupedArray[i];
+      for (let j = 0, len = records.length; j < len; j++) {
+        const record = records[j];
+        const count = scales.length;
+        for (let i = 0; i < count; i++) {
+          const scale = scales[i];
+          const field = scale.field;
+          record[field] = record.origin[field];
+        }
+      }
+    }
+
+    if (adjust.type === 'dodge') {
       for (let i = 0, len = groupedArray.length; i < len; i++) {
         // 如果是dodge, 需要处理数字再处理
         this._numberic(groupedArray[i]);
       }
     }
-    adjustInstance.processAdjust(groupedArray);
 
-    this.adjust = adjustInstance;
+    const adjustData = adjust.adjust.process(groupedArray);
+    // process 返回的是新数组，所以要修改 records
+    records.forEach((record, index: number) => {
+      record.children = adjustData[index];
+      adjust.adjust.setIndexMap({ index, key: record.key });
+    });
 
-    return groupedArray;
-  }
-
-  _updateStackRange(field, scale, dataArray) {
-    const flattenArray = flatten(dataArray);
-    let min = Infinity;
-    let max = -Infinity;
-    for (let i = 0, len = flattenArray.length; i < len; i++) {
-      const obj = flattenArray[i];
-      const tmpMin = Math.min.apply(null, obj[field]);
-      const tmpMax = Math.max.apply(null, obj[field]);
-      if (tmpMin < min) {
-        min = tmpMin;
-      }
-      if (tmpMax > max) {
-        max = tmpMax;
-      }
-    }
-    if (min !== scale.min || max !== scale.max) {
-      scale.change({
-        min,
-        max,
-      });
-    }
+    return adjustData;
   }
 
   _processData() {
@@ -268,10 +408,10 @@ class Geometry<
     const data = this._saveOrigin(originData);
     // 根据分类度量进行数据分组
     const records = this._groupData(data);
-    // groupedArray 是二维数组
-    const groupedArray = records.map((record) => record.children);
+
+    this._createAdjust();
     // 根据adjust分组
-    const dataArray = this._adjustData(groupedArray);
+    const dataArray = this._adjustData(records);
 
     this.dataArray = dataArray;
 
@@ -283,7 +423,16 @@ class Geometry<
       this._sortData(records);
     }
 
-    this.records = records;
+    this.dataRecords = records;
+  }
+
+  _readjustData(records) {
+    const { adjust } = this;
+    if (!adjust) return;
+    // 根据adjust分组
+    const dataArray = this._adjustData(records);
+
+    this.dataArray = dataArray;
   }
 
   _sortData(records) {
@@ -297,28 +446,18 @@ class Geometry<
               toTimeStamp(record1[FIELD_ORIGIN][field]) - toTimeStamp(record2[FIELD_ORIGIN][field])
             );
           }
-          return (
-            xScale.translate(record1[FIELD_ORIGIN][field]) -
-            xScale.translate(record2[FIELD_ORIGIN][field])
-          );
+          const normalized1 = xScale.translate(record1[FIELD_ORIGIN][field]);
+          const normalized2 = xScale.translate(record2[FIELD_ORIGIN][field]);
+          if (isNaN(normalized1)) {
+            return 1;
+          }
+          if (isNaN(normalized2)) {
+            return -1;
+          }
+          return normalized1 - normalized2;
         });
       });
     }
-  }
-
-  _initEvent() {
-    const { container, props } = this;
-    const canvas = container.get('canvas');
-    ['onPressStart', 'onPress', 'onPressEnd', 'onPan', 'onPanStart', 'onPanEnd'].forEach(
-      (eventName) => {
-        if (props[eventName]) {
-          canvas.on(eventName.substr(2).toLowerCase(), (ev) => {
-            ev.geometry = this;
-            props[eventName](ev);
-          });
-        }
-      }
-    );
   }
 
   getY0Value() {
@@ -350,10 +489,14 @@ class Geometry<
     const value = field ? origin[field] : origin;
     each(styles, (attr, key) => {
       if (isFunction(attr)) {
-        shapeStyle[key] = attr(value);
-      } else {
-        shapeStyle[key] = attr;
+        const attrValue = attr(value);
+        if (!attrValue) {
+          return;
+        }
+        shapeStyle[key] = attrValue;
+        return;
       }
+      shapeStyle[key] = attr;
     });
     return shapeStyle;
   }
@@ -372,6 +515,8 @@ class Geometry<
     const { linearAttrs, nonlinearAttrs } = attrController.getAttrsByLinear();
     const defaultAttrValues = attrController.getDefaultAttrValues();
 
+    const mappedRecords = [];
+
     for (let i = 0, len = records.length; i < len; i++) {
       const record = records[i];
       const { children } = record;
@@ -379,27 +524,34 @@ class Geometry<
         ...defaultAttrValues,
       };
       const firstChild = children[0];
-
+      if (children.length === 0) {
+        mappedRecords.push({ ...record });
+        continue;
+      }
       // 非线性映射
       for (let k = 0, len = nonlinearAttrs.length; k < len; k++) {
         const attrName = nonlinearAttrs[k];
         const attr = attrs[attrName];
         // 非线性映射只用映射第一项就可以了
-        attrValues[attrName] = attr.mapping(firstChild[attr.field]);
+        attrValues[attrName] = attr.mapping(firstChild[attr.field], firstChild.origin);
       }
 
       // 线性属性映射
+      const mappedChildren = [];
       for (let j = 0, childrenLen = children.length; j < childrenLen; j++) {
         const child = children[j];
         const normalized: any = {};
         for (let k = 0; k < linearAttrs.length; k++) {
           const attrName = linearAttrs[k];
           const attr = attrs[attrName];
+
+          const value = child[attr.field];
+
           // 分类属性的线性映射
           if (attrController.isGroupAttr(attrName)) {
-            attrValues[attrName] = attr.mapping(child[attr.field]);
+            attrValues[attrName] = attr.mapping(value, child);
           } else {
-            normalized[attrName] = attr.normalize(child[attr.field]);
+            normalized[attrName] = attr.normalize(value);
           }
         }
 
@@ -409,11 +561,15 @@ class Geometry<
         });
 
         // 获取 shape 的 style
+        const { origin } = child;
         const shapeName = attrValues.shape;
-        const shape = this._getShapeStyle(shapeName, child.origin);
+        const shape = this._getShapeStyle(shapeName, origin);
         const selected = this.isSelected(child);
-
-        mix(child, attrValues, {
+        // 饼图 Interval 的 y 值设置为 color, normalized, x, y, shapeName, shape, selected 等字段时,
+        // 会导致取值异常
+        mappedChildren.push({
+          ...child,
+          ...attrValues,
           normalized,
           x,
           y,
@@ -422,17 +578,38 @@ class Geometry<
           selected,
         });
       }
+      mappedRecords.push({
+        ...record,
+        children: mappedChildren,
+      });
     }
-    return records;
+    return mappedRecords;
   }
 
   // 数据映射
   mapping() {
-    const { records } = this;
+    const { dataRecords } = this;
     // 数据映射
-    this._mapping(records);
+    this.records = this._mapping(dataRecords);
 
-    return records;
+    return this.records;
+  }
+
+  getClip() {
+    const { coord, viewClip } = this.props;
+    const { width: contentWidth, height: contentHeight, left, top } = coord;
+    if (viewClip) {
+      return {
+        type: 'rect',
+        style: {
+          x: left,
+          y: top,
+          width: contentWidth,
+          height: contentHeight,
+        },
+      };
+    }
+    return null;
   }
 
   getAttr(attrName: string) {
@@ -445,6 +622,10 @@ class Geometry<
 
   getYScale(): Scale {
     return this.getAttr('y').scale;
+  }
+
+  getColorScale(): Scale {
+    return this.getAttr('color').scale;
   }
 
   _getXSnap(invertPointX) {
@@ -489,10 +670,32 @@ class Geometry<
     if (yScale.isCategory) {
       return records.filter((record) => record[FIELD_ORIGIN][yField] === yValue);
     }
+
+    // 与 `this._mapping` 返回的中的 item 一一对应
+    const originRecordList = flatten(this.dataRecords.map((r) => r.children));
+    // linear
+    return records.filter((record, idx) => {
+      const isOverrideField = OVERRIDE_FIELDS_SET.has(yField);
+      const rangeY = isOverrideField ? originRecordList[idx]?.[yField] : record[yField];
+      if (rangeY?.[0] <= yValue && rangeY?.[1] >= yValue) {
+        return true;
+      }
+      return false;
+    });
+  }
+
+  _getXSnapRecords(invertPointX, records) {
+    const xScale = this.getXScale();
+    const { field: xField } = xScale;
+    const xValue = xScale.invert(invertPointX);
+    // category
+    if (xScale.isCategory) {
+      return records.filter((record) => record[FIELD_ORIGIN][xField] === xValue);
+    }
     // linear
     return records.filter((record) => {
-      const rangeY = record[yField];
-      if (rangeY[0] <= yValue && rangeY[1] >= yValue) {
+      const rangeX = record[xField];
+      if (rangeX[0] <= xValue && rangeX[1] >= xValue) {
         return true;
       }
       return false;
@@ -510,6 +713,7 @@ class Geometry<
   getSnapRecords(point, inCoordRange?): any[] {
     const { props } = this;
     const { coord, adjust } = props;
+
     const invertPoint = coord.invertPoint(point);
     const xScale = this.getXScale();
     const yScale = this.getYScale();
@@ -530,18 +734,39 @@ class Geometry<
 
     const records = this.flatRecords();
 
+    const xValue = xScale.invert(invertPoint.x);
+    const yValue = yScale.invert(invertPoint.y);
+
+    const coordPoint = coord.convertPoint(invertPoint);
+    const coordRecord = {
+      // 坐标点
+      x: coordPoint.x,
+      y: coordPoint.y,
+      xValue,
+      yValue,
+      xText: xScale.getText(xValue),
+      yText: yScale.getText(yValue),
+    };
+
     // 处理饼图
-    if (adjust === 'stack' && coord.isPolar && coord.transposed) {
-      // 弧度在半径范围内
-      if (invertPoint.x >= 0 && invertPoint.x <= 1) {
-        const snapRecords = this._getYSnapRecords(invertPoint.y, records);
-        return snapRecords;
+    if (adjust === 'stack' && coord.isPolar) {
+      if (coord.transposed) {
+        // 弧度在半径范围内
+        if (invertPoint.x >= 0 && invertPoint.x <= 1) {
+          const snapRecords = this._getYSnapRecords(invertPoint.y, records);
+          return snapRecords;
+        }
+      } else {
+        if (invertPoint.y >= 0 && invertPoint.y <= 1) {
+          const snapRecords = this._getXSnapRecords(invertPoint.x, records);
+          return snapRecords;
+        }
       }
     }
 
     const rst = [];
     const value = this._getXSnap(invertPoint.x);
-    if (!value) {
+    if (isNull(value)) {
       return rst;
     }
     const { field: xField } = xScale;
@@ -551,6 +776,7 @@ class Geometry<
         ...records[i],
         xField,
         yField,
+        coord: coordRecord,
       };
       const originValue = record[FIELD_ORIGIN][xField];
       if (xScale.type === 'timeCat' && toTimeStamp(originValue) === value) {
@@ -563,16 +789,50 @@ class Geometry<
     return rst;
   }
 
+  getRecords(data, field = 'xfield') {
+    const records = this.flatRecords();
+    const xScale = this.getXScale();
+    const yScale = this.getYScale();
+    const { field: xField } = xScale;
+    const { field: yField } = yScale;
+    const value = data[xField];
+    const rst = [];
+
+    for (let i = 0, len = records.length; i < len; i++) {
+      const record = {
+        ...records[i],
+        xField,
+        yField,
+      };
+      const originValue = record[FIELD_ORIGIN][field === 'xfield' ? xField : yField];
+      if (originValue === value) {
+        rst.push(record);
+      }
+    }
+
+    return rst;
+  }
+
   getLegendItems() {
-    const { attrController } = this;
+    const { attrController, records } = this;
     const colorAttr = attrController.getAttr('color');
     if (!colorAttr) return null;
     const { scale } = colorAttr;
-    if (!scale.isCategory) return null;
+    const { isCategory, field } = scale;
+    if (!isCategory) return null;
+
+    const flatRecords = records ? this.flatRecords() : [];
     const ticks = scale.getTicks();
     const items = ticks.map((tick) => {
       const { text, tickValue } = tick;
-      const color = colorAttr.mapping(tickValue);
+      const record = find(flatRecords, (item) => {
+        if (!item) return false;
+        const { origin } = item;
+        return origin[field] === tickValue;
+      });
+
+      // @ts-ignore
+      const color = record ? record.color : colorAttr.mapping(tickValue);
       return {
         field: scale.field,
         color,

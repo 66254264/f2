@@ -1,20 +1,28 @@
-import { jsx } from '../../jsx';
-import { isNil, deepMix } from '@antv/util';
+import { deepMix, isNil } from '@antv/util';
+import { jsx } from '@antv/f-engine';
 
 export default (props) => {
-  const { records, animation } = props;
+  const { records, animation, clip } = props;
   return (
-    <group>
+    <group
+      attrs={{
+        clip,
+      }}
+    >
       {records.map((record) => {
         const { key, children } = record;
         return (
           <group key={key}>
             {children.map((item) => {
               const { x, y, size, color, shapeName, shape } = item;
+              if (isNaN(x) || isNaN(y)) {
+                return null;
+              }
               if (shapeName === 'rect') {
                 const rectSize = isNil(size) ? shape.size : size;
                 return (
                   <rect
+                    key={key}
                     attrs={{
                       x: x - rectSize,
                       y: y - rectSize,
@@ -43,9 +51,10 @@ export default (props) => {
               }
               return (
                 <circle
-                  attrs={{
-                    x,
-                    y,
+                  key={key}
+                  style={{
+                    cx: x,
+                    cy: y,
                     fill: shapeName === 'circle' ? color : null,
                     stroke: shapeName === 'hollowCircle' ? color : null,
                     ...shape,
@@ -60,7 +69,7 @@ export default (props) => {
                       update: {
                         easing: 'linear',
                         duration: 450,
-                        property: ['x', 'y', 'r', 'fill'],
+                        property: ['cx', 'cy', 'r', 'fill'],
                       },
                     },
                     animation

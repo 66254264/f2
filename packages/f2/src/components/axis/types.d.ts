@@ -1,13 +1,14 @@
-import { LineAttrs, TextAttrs } from '../../types';
+import { LineStyleProps, TextStyleProps, MarkerStyleProps } from '@antv/f-engine';
 import Coord from '../../coord';
-import { ChartChildProps } from '../../chart';
+import { DataRecord, DataField, DataValue } from '../../chart/Data';
 
-interface TickLine extends LineAttrs {
+interface TickLine extends LineStyleProps {
   length?: number; // tick line 的长度
 }
 
-interface Text extends TextAttrs {
-  align?: 'left' | 'right' | 'start' | 'center' | 'end' | 'between';
+interface Text extends TextStyleProps {
+  align?: 'left' | 'right' | 'start' | 'center' | 'end' | 'between' | 'auto';
+  text?: string;
 }
 
 // 仅在 bottom 下新增了 align 支持 `between`
@@ -18,19 +19,25 @@ type LabelCallback<Type = void> = (
   index: number,
   total: number
 ) => StyleText<Type>;
-type GridCallBack = (text: Tick['text'], index: number, total: number) => LineAttrs;
+type GridCallBack = (text: Tick['text'], index: number, total: number) => LineStyleProps;
 
+interface symbolStyleProps extends MarkerStyleProps {
+  type?: MarkerStyleProps.symbol;
+}
 export interface Style<Type = void> {
-  grid?: LineAttrs;
+  grid?: LineStyleProps;
   tickLine?: TickLine;
-  line?: LineAttrs;
+  line?: LineStyleProps;
+  symbol?: symbolStyleProps | symbolStyleProps[];
   labelOffset?: number;
   label?: StyleText<Type>;
 }
 
 export interface StyleProps<Type = void> extends Omit<Style, 'label' | 'grid' | 'labelOffset'> {
+  width?: number | string;
+  height?: number | string;
   label?: StyleText<Type> | LabelCallback<Type>;
-  grid?: LineAttrs | GridCallBack;
+  grid?: LineStyleProps | GridCallBack;
   labelOffset?: number | string;
 }
 
@@ -40,12 +47,15 @@ interface Point {
 }
 
 export interface Tick {
-  points: Point[];
+  value: number;
+  points?: Point[];
   text: string;
   tickValue: string | number;
   labelStyle?: Text;
-  gridStyle?: LineAttrs;
+  gridStyle?: LineStyleProps;
   gridPoints?: Point[];
+  visible?: boolean;
+  labelWidth?: number;
 }
 
 type PolarCord = Pick<Coord, 'center'>;
@@ -87,25 +97,54 @@ export interface PolarAxisProps {
   animation?: any;
 }
 
-export interface AxisProps extends ChartChildProps {
-  /**
-   * 映射的字段名称
-   */
-  field: string;
-  position?: 'right' | 'left' | 'top' | 'bottom';
+export interface AxisProps<
+  TRecord extends DataRecord = DataRecord,
+  TField extends DataField<TRecord> = DataField<TRecord>
+> {
   /**
    * 是否显示该坐标轴
    */
   visible?: boolean;
+  /**
+   * 映射的字段名称
+   */
+  field: TField;
+  /**
+   * 坐标轴显示位置
+   */
+  position?: 'right' | 'left' | 'top' | 'bottom';
+  /**
+   * 回调函数，用于格式化坐标轴刻度点的文本显示，
+   * 会影响数据在坐标轴 axis、图例 legend、提示信息 tooltip 上的显示。
+   */
+  formatter?: (value: DataValue<TRecord, TField>) => string | number;
+  type?: string;
+  tickCount?: number;
+  range?: any;
+  mask?: string;
+  min?: number;
+  max?: number;
+  nice?: boolean;
+  ticks?: Array;
   /**
    * 坐标轴样式定制
    */
   style?: StyleProps;
   // 网格线类型
   grid?: 'arc' | 'line';
-  [key: string]: any; // TODO
-}
-
-export namespace AxisTypes {
-  export type Props = AxisProps;
+  /**
+   * 是否自动旋转标签以防止重叠
+   * @default false
+   */
+  labelAutoRotate?: boolean;
+  /**
+   * 是否自动隐藏标签
+   * @default false
+   */
+  labelAutoHide?: boolean;
+  /**
+   * 检测是否重叠安全边距
+   * @default 2
+   */
+  safetyDistance?: number | string;
 }

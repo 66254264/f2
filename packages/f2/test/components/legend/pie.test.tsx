@@ -47,7 +47,7 @@ describe('图例 - position', () => {
           ref={chartRef}
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
             transposed: true,
           }}
           scale={{}}
@@ -59,7 +59,7 @@ describe('图例 - position', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -84,7 +84,7 @@ describe('图例 - position', () => {
           ref={chartRef}
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
             transposed: true,
           }}
         >
@@ -95,7 +95,7 @@ describe('图例 - position', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -110,7 +110,7 @@ describe('图例 - position', () => {
           ref={chartRef}
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
             transposed: true,
           }}
         >
@@ -121,7 +121,7 @@ describe('图例 - position', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -147,7 +147,7 @@ describe('图例 - position', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();

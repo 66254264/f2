@@ -1,20 +1,16 @@
-import { jsx } from '../../jsx';
-import { renderShape } from '../../base/diff';
-import Component from '../../base/component';
-import Chart from '../../chart';
-import { find } from '@antv/util';
-import { getElementsByClassName, isInBBox } from '../../util';
-import { Style, TextAttrs } from '../../types';
+import { jsx, Component, computeLayout, GroupStyleProps, TextStyleProps } from '@antv/f-engine';
+import { ChartChildProps } from '../../chart';
+import { isFunction } from '@antv/util';
 
 interface LegendItem {
   /**
    * 标记颜色。
    */
-  color: string;
+  color?: string;
   /**
    * 名称。
    */
-  name: string;
+  name?: string;
   /**
    * 值。
    */
@@ -23,16 +19,9 @@ interface LegendItem {
    * 图例标记。
    */
   marker?: string;
+  [key: string]: any;
 }
 export interface LegendProps {
-  /**
-   * 代表图例对应的数据字段名。
-   */
-  field?: string;
-  /**
-   * 图表。
-   */
-  readonly chart?: Chart;
   /**
    * 图例的显示位置。默认为 top。
    */
@@ -52,7 +41,7 @@ export interface LegendProps {
   /**
    * 回调函数，用于格式化图例每项的文本显示。
    */
-  itemFormatter?: (value: string) => string;
+  itemFormatter?: (value, name) => string;
   /**
    * 图例项列表。
    */
@@ -60,28 +49,40 @@ export interface LegendProps {
   /**
    * 图例样式。
    */
-  style?: Style;
+  style?: GroupStyleProps;
   /**
    * 图例标记。
    */
-  marker?: 'circle' | 'square';
+  marker?: 'circle' | 'square' | 'line';
+  /**
+   * 用于设置图例项的样式
+   */
+  itemStyle?: GroupStyleProps;
   /**
    * 用于设置图例项的文本样式
    */
-  nameStyle?: TextAttrs;
+  nameStyle?: Omit<TextStyleProps, 'text'>;
   /**
    * 用于设置图例项的文本样式
    */
-  valueStyle?: TextAttrs;
+  valueStyle?: Omit<TextStyleProps, 'text'>;
+  /**
+   * value展示文案的前缀
+   */
+  valuePrefix?: string;
   /**
    * 是否可点击
    */
   clickable?: boolean;
+  onClick?: (item: LegendItem) => void;
 }
 
 export default (View) => {
-  return class Legend extends Component<LegendProps> {
-    style: Style;
+  return class Legend<IProps extends LegendProps = LegendProps> extends Component<
+    IProps & ChartChildProps
+  > {
+    legendStyle: GroupStyleProps;
+    itemWidth: Number;
     constructor(props) {
       super(props);
       this.state = {
@@ -115,14 +116,17 @@ export default (View) => {
       });
     }
 
-    getMaxItemBox(legendShape) {
+    getMaxItemBox(node) {
       let maxItemWidth = 0;
       let maxItemHeight = 0;
-      (legendShape.get('children') || []).forEach((child) => {
-        const { width, height } = child.get('attrs');
+      (node.children || []).forEach((child) => {
+        const { layout } = child;
+        const { width, height } = layout;
+
         maxItemWidth = Math.max(maxItemWidth, width);
         maxItemHeight = Math.max(maxItemHeight, height);
       });
+
       return {
         width: maxItemWidth,
         height: maxItemHeight,
@@ -141,19 +145,18 @@ export default (View) => {
       } = props;
       const items = this.getItems();
       if (!items || !items.length) return;
-      const { left, top, right, bottom, width: layoutWidth, height: layoutHeight } = parentLayout;
+      const { left, top, width: layoutWidth, height: layoutHeight } = parentLayout;
       const width = context.px2hd(customWidth) || layoutWidth;
-      const shape = renderShape(this, this.render(), false);
-      const { width: itemMaxWidth, height: itemMaxHeight } = this.getMaxItemBox(shape);
+      const node = computeLayout(this, this.render());
+      const { width: itemMaxWidth, height: itemMaxHeight } = this.getMaxItemBox(node);
       // 每行最多的个数
-      const lineMaxCount = Math.floor(width / itemMaxWidth);
+      const lineMaxCount = Math.max(1, Math.floor(width / itemMaxWidth));
       const itemCount = items.length;
       // legend item 的行数
       const lineCount = Math.ceil(itemCount / lineMaxCount);
       const itemWidth = width / lineMaxCount;
       const autoHeight = itemMaxHeight * lineCount;
-
-      const style: Style = {
+      const style: GroupStyleProps = {
         left,
         top,
         width,
@@ -164,52 +167,39 @@ export default (View) => {
         alignItems: 'center',
         justifyContent: 'flex-start',
       };
-
       // 如果只有一行，2端对齐
       if (lineCount === 1) {
         style.justifyContent = 'space-between';
       }
-
       if (position === 'top') {
         style.height = customHeight ? customHeight : autoHeight;
       }
-
       if (position === 'left') {
         style.flexDirection = 'column';
         style.justifyContent = 'center';
         style.width = itemMaxWidth;
         style.height = customHeight ? customHeight : layoutHeight;
       }
-
       if (position === 'right') {
         style.flexDirection = 'column';
         style.alignItems = 'flex-start';
         style.justifyContent = 'center';
         style.width = itemMaxWidth;
         style.height = customHeight ? customHeight : layoutHeight;
-        style.left = right - itemMaxWidth;
+        style.left = left + (width - itemMaxWidth);
       }
-
       if (position === 'bottom') {
-        style.top = bottom - autoHeight;
+        style.top = top + (layoutHeight - autoHeight);
         style.height = customHeight ? customHeight : autoHeight;
       }
-
-      this.setState({
-        items,
-        itemWidth,
-        style,
-      });
-
-      this.style = style;
-
-      shape.remove();
+      this.itemWidth = itemWidth;
+      this.legendStyle = style;
     }
 
     updateCoord() {
-      const { context, props, style } = this;
+      const { context, props, legendStyle } = this;
       const { position = 'top', margin = '30px', chart } = props;
-      const { width, height } = style;
+      const { width, height } = legendStyle;
       const marginNumber = context.px2hd(margin);
 
       chart.updateCoordFor(this, {
@@ -227,68 +217,53 @@ export default (View) => {
     }
 
     didMount() {
-      this._initEvent();
+      // this._initEvent();
     }
 
     willUpdate(): void {
       const items = this.getItems();
       if (!items || !items.length) return;
+      this._init();
       this.updateCoord();
     }
 
-    _initEvent() {
-      const { context, props, container } = this;
-      const { canvas } = context;
-      const { chart, clickable = true } = props;
-
+    _onclick = (item) => {
+      const { props } = this;
+      const { chart, clickable = true, onClick } = props;
       if (!clickable) return;
+      const clickItem = item.currentTarget;
+      if (!clickItem) {
+        return;
+      }
+      // @ts-ignore
+      const dataItem = clickItem.config['data-item'];
+      if (!dataItem) {
+        return;
+      }
+      if (isFunction(onClick)) {
+        onClick(dataItem);
+      }
+      const { field, tickValue } = dataItem;
 
-      // item 点击事件
-      canvas.on('click', (ev) => {
-        const { points } = ev;
-        const point = points[0];
-        const bbox = container.getBBox();
-        if (!isInBBox(bbox, point)) {
-          return;
-        }
-        const legendItems = getElementsByClassName('legend-item', container);
-        if (!legendItems.length) {
-          return;
-        }
-        const clickItem = find(legendItems, (item) => {
-          const itemBBox = item.getBBox();
-          return isInBBox(itemBBox, point);
-        });
-        if (!clickItem) {
-          return;
-        }
-        const dataItem = clickItem.get('data-item');
-        if (!dataItem) {
-          return;
-        }
-        const { field, tickValue } = dataItem;
-
-        const { filtered: prevFiltered } = this.state;
-        const filtered = {
-          ...prevFiltered,
-          [tickValue]: !prevFiltered[tickValue],
-        };
-        this.setState({
-          filtered,
-        });
-        chart.filter(field, (value) => {
-          return !filtered[value];
-        });
+      const { filtered: prevFiltered } = this.state;
+      const filtered = {
+        ...prevFiltered,
+        [tickValue]: !prevFiltered[tickValue],
+      };
+      this.setState({
+        filtered,
       });
-    }
+      chart.filter(field, (value) => {
+        return !filtered[value];
+      });
+    };
 
     render() {
-      const { props, state } = this;
+      const { props, itemWidth, legendStyle } = this;
       const items = this.getItems();
       if (!items || !items.length) {
         return null;
       }
-      const { itemWidth, style } = state;
 
       return (
         <View
@@ -296,9 +271,10 @@ export default (View) => {
           items={items}
           itemWidth={itemWidth}
           style={{
-            ...style,
+            ...legendStyle,
             ...props.style,
           }}
+          onClick={this._onclick}
         />
       );
     }

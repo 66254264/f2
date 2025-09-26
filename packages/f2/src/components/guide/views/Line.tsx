@@ -1,18 +1,21 @@
-import { jsx } from '../../../jsx';
+import { jsx, LineStyleProps } from '@antv/f-engine';
+import { GuideProps } from '../withGuide';
 import { isArray, deepMix } from '@antv/util';
-import { Style } from '../../../types';
 
-type LineGuideProps = {
+export interface LineGuideProps extends GuideProps {
   points?: { x: number; y: number }[] | null;
-  style?: Style;
-  offsetX?: number | number[];
-  offsetY?: number | number[];
+  style?: Partial<LineStyleProps> | ((record?) => Partial<LineStyleProps>);
+  offsetX?: number | string | (number | string)[];
+  offsetY?: number | string | (number | string)[];
   theme?: any;
-};
+}
 
 export default (props: LineGuideProps, context) => {
   const { theme = {} } = props;
   const { points, style, offsetX, offsetY, animation } = deepMix({ ...theme.line }, props);
+  const checkNaN = points.some((d)=> isNaN(d.x) || isNaN(d.y));
+  if(checkNaN) return;
+
   const { x: x1, y: y1 } = points[0] || {};
   const { x: x2, y: y2 } = points[1] || {};
 
@@ -28,7 +31,7 @@ export default (props: LineGuideProps, context) => {
   return (
     <group>
       <line
-        attrs={{
+        style={{
           x1: posX1,
           y1: posY1,
           x2: posX2,

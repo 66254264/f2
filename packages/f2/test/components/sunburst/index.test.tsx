@@ -1,5 +1,4 @@
-import { jsx } from '../../../src/jsx';
-import { Polar } from '../../../src/coord';
+import { jsx } from '../../../src';
 import { Canvas, Sunburst } from '../../../src';
 import { createContext, delay } from '../../util';
 import data from './data';
@@ -25,7 +24,7 @@ describe('Sunburst', () => {
         <Sunburst
           data={data.children}
           coord={{
-            type: Polar,
+            type: 'polar',
             // transposed: true,
             // left: 10,
             // top: 10,
@@ -42,7 +41,7 @@ describe('Sunburst', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();

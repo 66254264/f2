@@ -1,46 +1,47 @@
-import { jsx } from '../../../jsx';
-import { Style } from '../../../types';
-import { deepMix } from '@antv/util';
+import { jsx, ImageStyleProps } from '@antv/f-engine';
+import { deepMix, isNumber } from '@antv/util';
+import { GuideProps } from '../withGuide';
 
-type ImageGuideProps = {
+export interface ImageGuideProps extends GuideProps {
   src: string;
   points?: { x: number; y: number }[] | null;
-  attrs?: any;
-  style?: Style;
-  offsetX?: number;
-  offsetY?: number;
-};
+  attrs?: ImageStyleProps;
+  style?: Partial<ImageStyleProps> | ((record?) => Partial<ImageStyleProps>);
+  offsetX?: number | string;
+  offsetY?: number | string;
+}
 
-const defaultProps: ImageGuideProps = {
+const defaultProps: Omit<ImageGuideProps, 'records'> = {
   offsetX: 0,
   offsetY: 0,
   points: [],
   src: '',
-};
-const baseAttrs = {
-  height: '20px',
-  width: '20px',
 };
 
 export default (props: ImageGuideProps, context) => {
   const cfg = deepMix({}, defaultProps, props);
   const { points, style, attrs, offsetX, offsetY, src, animation } = cfg;
   const { x, y } = points[0] || {};
-  const { height = 0, width = 0 } = attrs;
+  if (isNaN(x) || isNaN(y)) return null;
+
+  const { height = 0, width = 0 } = { ...attrs, ...style };
+
+  const heightNum = isNumber(height) ? context.px2hd(height + 'px') : context.px2hd(height);
+  const widthNum = isNumber(width) ? context.px2hd(width + 'px') : context.px2hd(width);
 
   const offsetXNum = context.px2hd(offsetX);
   const offsetYNum = context.px2hd(offsetY);
-  const posX = x + (offsetXNum || 0) - height / 2;
-  const posY = y + (offsetYNum || 0) - width / 2;
+  const posX = x + (offsetXNum || 0) - widthNum / 2;
+  const posY = y + (offsetYNum || 0) - heightNum / 2;
 
   return (
-    <group style={style}>
+    <group>
       <image
-        attrs={{
-          ...baseAttrs,
+        style={{
           ...attrs,
-          height: height + 'px',
-          width: width + 'px',
+          ...style,
+          height: heightNum,
+          width: widthNum,
           x: posX,
           y: posY,
           src,

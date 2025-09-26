@@ -1,4 +1,4 @@
-import { jsx } from '../../../src/jsx';
+import { jsx } from '../../../src';
 import { Canvas, Chart, Interval, Axis } from '../../../src';
 import { createContext, delay } from '../../util';
 const context = createContext();
@@ -37,7 +37,7 @@ describe('Interval', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -55,13 +55,13 @@ describe('Interval', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
   });
 
-  it('x scale 为 timeCat', () => {
+  it('x scale 为 timeCat', async () => {
     const data = [
       {
         time: '2016-08-08 00:00:00',
@@ -111,8 +111,8 @@ describe('Interval', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
-
+    await canvas.render();
+    await delay(0);
     const timeScale = chartRef.current.scale.getScale('time');
     const { range } = timeScale;
     expect(range[0]).toBeGreaterThan(0);

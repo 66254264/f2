@@ -1,10 +1,10 @@
-import { jsx } from '../../jsx';
+import { jsx } from '@antv/f-engine';
 
 export default (props, context) => {
-  const { coord, range, position, layout } = props;
+  const { coord, range, position, layout, style, background, barStyle } = props;
   const { top, height } = coord;
   const { left, width } = layout;
-  const [start, end] = range;
+  const [start, end] = range?.y || range?.x;
 
   const barTop = height * start;
   const barHeight = height * (end - start);
@@ -12,8 +12,10 @@ export default (props, context) => {
   return (
     <group
       style={{
+        display: 'flex',
         top,
         left: position === 'left' ? left - context.px2hd('8px') : left + width,
+        ...style,
       }}
     >
       <line
@@ -23,11 +25,10 @@ export default (props, context) => {
           left: 0,
           width: 0,
           height,
-        }}
-        attrs={{
           stroke: 'rgba(202, 215, 239, .2)',
           lineCap: 'round',
           lineWidth: '8px',
+          ...background,
         }}
       />
       <line
@@ -36,11 +37,10 @@ export default (props, context) => {
           top: barTop,
           width: 0,
           height: barHeight,
-        }}
-        attrs={{
           stroke: 'rgba(202, 215, 239, .5)',
           lineCap: 'round',
           lineWidth: '8px',
+          ...barStyle,
         }}
       />
     </group>

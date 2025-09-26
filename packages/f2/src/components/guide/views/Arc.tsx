@@ -1,16 +1,18 @@
-import { jsx } from '../../../jsx';
+import { jsx, ArcStyleProps } from '@antv/f-engine';
 import { deepMix } from '@antv/util';
-import { Style } from '../../../types';
+import { GuideProps } from '../withGuide';
 
-type ArcGuideProps = {
+export interface ArcGuideProps extends GuideProps {
   points?: { x: number; y: number }[] | null;
-  style?: Style;
+  style?: Partial<ArcStyleProps> | ((record?) => Partial<ArcStyleProps>);
   theme?: any;
-};
+}
 
 export default (props: ArcGuideProps) => {
   const { theme = {} } = props;
   const { coord, points, style, animation } = deepMix({ ...theme.line }, props);
+  const checkNaN = points.some((d)=> isNaN(d.x) || isNaN(d.y));
+  if(checkNaN) return null;
 
   const start = points[0] || {};
   const end = points[1] || {};
@@ -27,12 +29,12 @@ export default (props: ArcGuideProps) => {
   return (
     <group>
       <arc
-        attrs={{
-          x: coordCenter.x,
-          y: coordCenter.y,
+        style={{
+          cx: coordCenter.x,
+          cy: coordCenter.y,
           r: radius,
-          startAngle,
-          endAngle,
+          startAngle: `${startAngle}rad`,
+          endAngle: `${endAngle}rad`,
           ...style,
         }}
         animation={animation}

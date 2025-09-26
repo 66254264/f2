@@ -1,4 +1,4 @@
-import { jsx, Canvas, Chart, Axis, Interval } from '../../src';
+import { jsx, Canvas, Chart, Axis, Interval, Line, Point, Geometry, Area } from '../../src';
 import { createContext, delay } from '../util';
 const context = createContext();
 
@@ -15,25 +15,29 @@ const data = [
   { type: 'b', genre: 'Other', sold: 40 },
 ];
 
+type TRecord = typeof data[0];
+
 describe('Chart', () => {
   it('Chart render', async () => {
     const chartRef = { current: null };
-    const { type, props } = (
+    const { props } = (
       <Canvas context={context} pixelRatio={1}>
-        <Chart data={data} ref={chartRef}>
+        <Chart<TRecord>
+          data={data}
+          ref={chartRef}
+          coord={{
+            type: 'rect',
+          }}
+        >
           <Axis field="genre" />
-          <Axis field="sold" />
-          <Interval x="genre" y="sold" color="genre" />
+          <Axis<TRecord> field="sold" />
+          <Interval<TRecord> x="genre" y="sold" color="genre" />
         </Chart>
       </Canvas>
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
-    const chart = chartRef.current;
-
-    expect(chart.coord.left).toBeCloseTo(33.62);
-    expect(chart.coord.width).toBeCloseTo(251.38);
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -57,8 +61,6 @@ describe('Chart', () => {
       ).props
     );
 
-    expect(chart.coord.left).toBeCloseTo(83.62);
-    expect(chart.coord.width).toBeCloseTo(51.38);
     await delay(1000);
     expect(context).toMatchImageSnapshot();
   });

@@ -1,6 +1,6 @@
-import { jsx } from '../../jsx';
-import { px } from '../../types';
-import Zoom, { ZoomProps } from '../zoom';
+import { jsx, ShapeProps } from '@antv/f-engine';
+import withZoom, { ZoomProps } from '../zoom';
+import { ChartChildProps } from '../../chart';
 
 export interface ScrollBarProps extends ZoomProps {
   /**
@@ -13,12 +13,26 @@ export interface ScrollBarProps extends ZoomProps {
   position?: 'bottom' | 'top' | 'left' | 'right';
   /**
    * 间距
+   * @deprecated
    */
-  margin?: px;
+  margin?: string;
+
+  /**
+   * 滚动条父容器样式
+   */
+  style?: ShapeProps;
+  /**
+   * 背景条样式
+   */
+  background?: ShapeProps;
+  /**
+   * 滚动条样式
+   */
+  barStyle?: ShapeProps;
 }
 
 export default (View) => {
-  return class ScrollBar extends Zoom<ScrollBarProps> {
+  return class ScrollBar extends withZoom(View)<ScrollBarProps & ChartChildProps> {
     willMount() {
       super.willMount();
       const { context, props } = this;
@@ -35,6 +49,7 @@ export default (View) => {
         height: position === 'bottom' || position === 'top' ? marginNumber : 0,
       });
     }
+
     render() {
       const { props, state } = this;
       const { visible } = props;

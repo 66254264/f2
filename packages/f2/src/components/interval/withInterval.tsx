@@ -1,10 +1,30 @@
-import { jsx } from '../../jsx';
-import { mix, isNil, deepMix } from '@antv/util';
-import Geometry from '../geometry';
+import { jsx } from '@antv/f-engine';
+import { deepMix, isFunction, isNil, mix } from '@antv/util';
+import Geometry, { GeometryProps } from '../geometry';
 import * as LabelViews from './label';
+import { DataRecord } from '../../chart/Data';
+
+type ZoomRatioCallback<TRecord> = (record: TRecord) => number | null | undefined;
+
+export interface IntervalProps<TRecord extends DataRecord = DataRecord>
+  extends GeometryProps<TRecord> {
+  /**
+   * 柱子的显示比例
+   */
+  sizeRatio?: number;
+  /**
+   * 柱子放大缩小的比例
+   */
+  sizeZoom?: number | ZoomRatioCallback<TRecord>;
+  showLabel?: boolean;
+  labelCfg?: any;
+}
 
 export default (Views) => {
-  return class Interval extends Geometry {
+  return class Interval<
+    TRecord extends DataRecord = DataRecord,
+    IProps extends IntervalProps<TRecord> = IntervalProps<TRecord>
+  > extends Geometry<TRecord, IProps> {
     getDefaultCfg() {
       return {
         geomType: 'interval',
@@ -55,9 +75,8 @@ export default (Views) => {
 
     mapping() {
       const records = super.mapping();
-
       const { props } = this;
-      const { coord } = props;
+      const { coord, sizeZoom } = props;
       const y0 = this.getY0Value();
       const defaultSize = this.getDefaultSize();
 
@@ -66,12 +85,13 @@ export default (Views) => {
         const { children } = record;
         for (let j = 0, len = children.length; j < len; j++) {
           const child = children[j];
-          const { normalized, size: mappedSize } = child;
+          const { normalized, size: mappedSize, origin } = child;
 
           // 没有指定size，则根据数据来计算默认size
           if (isNil(mappedSize)) {
             const { x, y, size = defaultSize } = normalized;
-            mix(child, coord.convertRect({ x, y, y0, size }));
+            const zoomRatio = (isFunction(sizeZoom) ? sizeZoom(origin) : sizeZoom) ?? 1;
+            mix(child, coord.convertRect({ x, y, y0, size: size * zoomRatio }));
           } else {
             const { x, y } = child;
             const rect = { size: mappedSize, x, y, y0 };
@@ -84,11 +104,20 @@ export default (Views) => {
       return records;
     }
 
+    // 获取Y轴坐标零点的画布位置
+    getPointY0() {
+      const { props } = this;
+      const { coord } = props;
+      const y0 = this.getY0Value();
+      const y0Point = coord.convertPoint({ y: y0, x: 0 });
+      return y0Point?.y;
+    }
+
     render() {
       const { props, state } = this;
       const { coord, shape = 'rect', animation, showLabel, labelCfg: customLabelCfg } = props;
-      const View = Views[shape];
-      const LabelView = LabelViews[shape];
+      const View = isFunction(Views) ? Views : Views[shape as string];
+      const LabelView = LabelViews[shape as string];
       const labelCfg = deepMix(
         {
           label: null,
@@ -102,6 +131,8 @@ export default (Views) => {
       const { selected } = state;
 
       const records = this.mapping();
+      const pointY0 = this.getPointY0();
+      const clip = this.getClip();
       return (
         <View
           coord={coord}
@@ -112,6 +143,8 @@ export default (Views) => {
           showLabel={showLabel}
           labelCfg={labelCfg}
           LabelView={LabelView}
+          y0={pointY0}
+          clip={clip}
         />
       );
     }

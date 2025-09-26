@@ -55,7 +55,7 @@ describe('柱状图示例', () => {
       </Canvas>
     );
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -107,7 +107,7 @@ describe('柱状图示例', () => {
       </Canvas>
     );
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -154,7 +154,7 @@ describe('柱状图示例', () => {
       </Canvas>
     );
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -265,32 +265,14 @@ describe('柱状图示例', () => {
       </Canvas>
     );
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
   });
   it('带负值的分组分组柱图', async () => {
-    const context = createContext('带负值的分组分组柱图', {
-      height: '300px',
-      width: '400px',
-    });
+    const context = createContext('带负值的分组分组柱图');
     const data = [
-      {
-        time: '周一',
-        tem: 6.9,
-        city: 'tokyo',
-      },
-      {
-        time: '周二',
-        tem: 9.5,
-        city: 'tokyo',
-      },
-      {
-        time: '周三',
-        tem: 14.5,
-        city: 'tokyo',
-      },
       {
         time: '周四',
         tem: 18.2,
@@ -312,21 +294,6 @@ describe('柱状图示例', () => {
         city: 'tokyo',
       },
       {
-        time: '周一',
-        tem: -10.8,
-        city: 'newYork',
-      },
-      {
-        time: '周二',
-        tem: -5.7,
-        city: 'newYork',
-      },
-      {
-        time: '周三',
-        tem: -11.3,
-        city: 'newYork',
-      },
-      {
         time: '周四',
         tem: -17,
         city: 'newYork',
@@ -346,51 +313,27 @@ describe('柱状图示例', () => {
         tem: -24.1,
         city: 'newYork',
       },
-      {
-        time: '周一',
-        tem: 2.6,
-        city: 'berlin',
-      },
-      {
-        time: '周二',
-        tem: 3.5,
-        city: 'berlin',
-      },
-      {
-        time: '周三',
-        tem: 8.4,
-        city: 'berlin',
-      },
-      {
-        time: '周四',
-        tem: 13.5,
-        city: 'berlin',
-      },
-      {
-        time: '周五',
-        tem: 17,
-        city: 'berlin',
-      },
-      {
-        time: '周六',
-        tem: -18.6,
-        city: 'berlin',
-      },
-      {
-        time: '周日',
-        tem: 17.9,
-        city: 'berlin',
-      },
     ];
     const { type, props } = (
       <Canvas context={context} pixelRatio={1}>
         <Chart data={data}>
-          <Interval x="time" y="tem" color="city" adjust="dodge" />
+          <Interval
+            x="time"
+            y="tem"
+            color="city"
+            adjust="dodge"
+            style={{
+              field: 'tem',
+              radius: (val) => {
+                return val > 0 ? [10, 10, 0, 0] : [0, 0, 10, 10];
+              },
+            }}
+          />
         </Chart>
       </Canvas>
     );
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -493,7 +436,117 @@ describe('柱状图示例', () => {
       </Canvas>
     );
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
+
+    await delay(1000);
+    expect(context).toMatchImageSnapshot();
+  });
+
+  it('堆叠柱图-max', async () => {
+    const context = createContext('层叠柱图', {
+      height: '300px',
+      width: '400px',
+    });
+    const data = [
+      {
+        name: 'London',
+        月份: 'Jan.',
+        月均降雨量: 18.9,
+      },
+      {
+        name: 'London',
+        月份: 'Feb.',
+        月均降雨量: 28.8,
+      },
+      {
+        name: 'London',
+        月份: 'Mar.',
+        月均降雨量: 39.3,
+      },
+      {
+        name: 'London',
+        月份: 'Apr.',
+        月均降雨量: 81.4,
+      },
+      {
+        name: 'London',
+        月份: 'May.',
+        月均降雨量: 47,
+      },
+      {
+        name: 'London',
+        月份: 'Jun.',
+        月均降雨量: 20.3,
+      },
+      {
+        name: 'London',
+        月份: 'Jul.',
+        月均降雨量: 24,
+      },
+      {
+        name: 'London',
+        月份: 'Aug.',
+        月均降雨量: 35.6,
+      },
+      {
+        name: 'Berlin',
+        月份: 'Jan.',
+        月均降雨量: 12.4,
+      },
+      {
+        name: 'Berlin',
+        月份: 'Feb.',
+        月均降雨量: 23.2,
+      },
+      {
+        name: 'Berlin',
+        月份: 'Mar.',
+        月均降雨量: 34.5,
+      },
+      {
+        name: 'Berlin',
+        月份: 'Apr.',
+        月均降雨量: 99.7,
+      },
+      {
+        name: 'Berlin',
+        月份: 'May.',
+        月均降雨量: 52.6,
+      },
+      {
+        name: 'Berlin',
+        月份: 'Jun.',
+        月均降雨量: 35.5,
+      },
+      {
+        name: 'Berlin',
+        月份: 'Jul.',
+        月均降雨量: 37.4,
+      },
+      {
+        name: 'Berlin',
+        月份: 'Aug.',
+        月均降雨量: 42.4,
+      },
+    ];
+    const { type, props } = (
+      <Canvas context={context} pixelRatio={1}>
+        <Chart
+          data={data}
+          scale={{
+            月均降雨量: {
+              max: 100,
+            },
+          }}
+        >
+          <Axis field="月份" />
+          <Axis field="月均降雨量" />
+          <Interval x="月份" y="月均降雨量" color="name" adjust="stack" />
+        </Chart>
+      </Canvas>
+    );
+    const canvas = new Canvas(props);
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -612,7 +665,7 @@ describe('柱状图示例', () => {
       </Canvas>
     );
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -649,7 +702,7 @@ describe('柱状图示例', () => {
           ref={chartRef}
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
           }}
           scale={{
             population: {
@@ -664,9 +717,71 @@ describe('柱状图示例', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
+  });
+
+  it('花瓣图', async () => {
+    const data = [
+      {
+        year: '2001',
+        population: 25,
+      },
+      {
+        year: '2002',
+        population: 25,
+      },
+      {
+        year: '2003',
+        population: 25,
+      },
+      {
+        year: '2004',
+        population: 25,
+      },
+      {
+        year: '2005',
+        population: 25,
+      },
+      {
+        year: '2006',
+        population: 25,
+      },
+    ];
+    const context = createContext('南丁格尔玫瑰图');
+    const chartRef = { current: null };
+    const ref = { current: null };
+    const { type, props } = (
+      <Canvas context={context} pixelRatio={1}>
+        <Chart
+          data={data}
+          ref={chartRef}
+          coord={{
+            type: 'polar',
+          }}
+          scale={{
+            population: {
+              min: 0,
+            },
+          }}
+        >
+          <Interval
+            x="year"
+            y="population"
+            color="year"
+            style={{
+              radius: 30,
+            }}
+            ref={ref}
+          />
+          <Legend position="right" />
+        </Chart>
+      </Canvas>
+    );
+
+    const canvas = new Canvas(props);
+    await canvas.render();
   });
 });

@@ -1,6 +1,7 @@
 import { jsx, Canvas, Chart, Area } from '../../../src';
 import { Line, Point, Tooltip, Axis } from '../../../src/components';
 import { createContext, delay } from '../../util';
+import { clone } from '@antv/util';
 
 const data = [
   {
@@ -139,7 +140,7 @@ const data2 = [
     time: '12-05',
     value: 11345,
     name: '本店',
-  },  
+  },
 ];
 describe('雷达图', () => {
   describe('面积雷达图', () => {
@@ -158,7 +159,7 @@ describe('雷达图', () => {
       );
 
       const canvas = new Canvas(props);
-      canvas.render();
+      await canvas.render();
 
       await delay(1000);
       expect(context).toMatchImageSnapshot();
@@ -179,7 +180,7 @@ describe('雷达图', () => {
       );
 
       const canvas = new Canvas(props);
-      canvas.render();
+      await canvas.render();
 
       await delay(1000);
       expect(context).toMatchImageSnapshot();
@@ -199,12 +200,42 @@ describe('雷达图', () => {
       );
 
       const canvas = new Canvas(props);
-      canvas.render();
+      await canvas.render();
 
       await delay(1000);
       expect(context).toMatchImageSnapshot();
     });
 
+    it('雷达图展示 数据为0 时', async () => {
+      const context = createContext('雷达图展示 数据为0 时');
+      let data = clone(data1);
+      data[1].value = 0;
+      const { props } = (
+        <Canvas context={context} pixelRatio={1}>
+          <Chart data={data} coord="polar">
+            <Axis field="time" grid="line" />
+            <Axis field="value" grid="line" style={{ label: null }} />
+            <Line x="time" y="value" color="name" />
+            <Tooltip
+              custom={true}
+              defaultItem={data[1]}
+              snap
+              showCrosshairs
+              crosshairsStyle={{
+                stroke: '#999',
+                lineWidth: '4px',
+              }}
+            />
+          </Chart>
+        </Canvas>
+      );
+
+      const canvas = new Canvas(props);
+      canvas.render();
+
+      await delay(1000);
+      expect(context).toMatchImageSnapshot();
+    });
     it('雷达图展示辅助线', async () => {
       const context = createContext();
       const { props } = (
@@ -220,7 +251,7 @@ describe('雷达图', () => {
       );
 
       const canvas = new Canvas(props);
-      canvas.render();
+      await canvas.render();
 
       await delay(1000);
       expect(context).toMatchImageSnapshot();
@@ -244,7 +275,7 @@ describe('雷达图', () => {
       );
 
       const canvas = new Canvas(props);
-      canvas.render();
+      await canvas.render();
 
       await delay(1000);
       expect(context).toMatchImageSnapshot();
@@ -259,24 +290,28 @@ describe('雷达图', () => {
             <Axis field="value" grid="line" style={{ label: null }} />
             <Line x="time" y="value" color="name" />
             <Point x="time" y="value" color="name" />
-            <Tooltip custom={true} alwaysShow defaultItem={data2[0]} snap showCrosshairs 
-                // tooltipMarkerStyle中不设置fill时，默认使用record 记录中color自动填充                
-                tooltipMarkerStyle = {{
-                  r: 5,
-                  stroke: '#fff',
-                  lineWidth: '4px',      
-                }}
+            <Tooltip
+              custom={true}
+              alwaysShow
+              defaultItem={data2[0]}
+              snap
+              showCrosshairs
+              // tooltipMarkerStyle中不设置fill时，默认使用record 记录中color自动填充
+              tooltipMarkerStyle={{
+                r: 5,
+                stroke: '#fff',
+                lineWidth: '4px',
+              }}
             />
           </Chart>
         </Canvas>
       );
 
       const canvas = new Canvas(props);
-      canvas.render();
+      await canvas.render();
 
       await delay(1000);
       expect(context).toMatchImageSnapshot();
     });
-    
   });
 });

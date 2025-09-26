@@ -1,7 +1,7 @@
-import { jsx } from '../../jsx';
+import { jsx } from '@antv/f-engine';
 
 export default (props) => {
-  const { coord, node } = props;
+  const { coord, node, onClick } = props;
   const { children } = node;
   const { x, y } = coord.center;
 
@@ -11,18 +11,17 @@ export default (props) => {
         {nodes.map((node) => {
           const { xMin, xMax, yMin, yMax, color, children } = node;
           return (
-            <group>
+            <group onClick={onClick}>
               <sector
                 attrs={{
-                  x,
-                  y,
+                  cx: x,
+                  cy: y,
                   lineWidth: '1px',
                   stroke: '#fff',
-                  startAngle: xMin,
-                  endAngle: xMax,
+                  startAngle: `${xMin} rad`,
+                  endAngle: `${xMax} rad`,
                   r0: yMin,
                   r: yMax,
-                  anticlockwise: false,
                   fill: color,
                 }}
               />

@@ -22,12 +22,12 @@ describe('自定义', () => {
             }}
           />
           <Axis field="value" tickCount={5} />
-          <Line x="date" y="value" lineWidth="4px" color="type" shape="type" />
+          <Line x="date" y="value" color="type" shape="type" />
         </Chart>
       </Canvas>
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
   });
 });

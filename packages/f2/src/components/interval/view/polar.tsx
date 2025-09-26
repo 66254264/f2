@@ -1,8 +1,8 @@
-import { jsx } from '../../../jsx';
+import { jsx } from '@antv/f-engine';
 import { deepMix } from '@antv/util';
 
 export default (props) => {
-  const { coord, records, animation } = props;
+  const { coord, records, animation, onClick } = props;
   const { center, startAngle, endAngle, radius } = coord;
   return (
     <group
@@ -10,24 +10,24 @@ export default (props) => {
         appear: {
           easing: 'quadraticOut',
           duration: 450,
-          // 特殊处理，appear 的动画设置在整体上
-          ...(animation && animation.appear),
           clip: {
             type: 'sector',
             property: ['endAngle'],
-            attrs: {
-              x: center.x,
-              y: center.y,
-              startAngle,
+            style: {
+              cx: center.x,
+              cy: center.y,
+              startAngle: `${startAngle}rad`,
               r: radius,
             },
             start: {
-              endAngle: startAngle,
+              endAngle: `${startAngle}rad`,
             },
             end: {
-              endAngle,
+              endAngle: `${endAngle}rad`,
             },
           },
+          // 特殊处理，appear 的动画设置在整体上
+          ...(animation && animation.appear),
         },
       }}
     >
@@ -41,15 +41,17 @@ export default (props) => {
                 <sector
                   key={key}
                   attrs={{
-                    x: center.x,
-                    y: center.y,
+                    cx: center.x,
+                    cy: center.y,
                     fill: color,
-                    startAngle: xMin,
-                    endAngle: xMax,
+                    lineWidth: 1,
+                    startAngle: `${xMin}rad`,
+                    endAngle: `${xMax}rad`,
                     r0: yMin,
                     r: yMax,
                     ...shape,
                   }}
+                  onClick={onClick}
                   animation={deepMix(
                     {
                       update: {

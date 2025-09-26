@@ -19,7 +19,7 @@ describe('Point Chart', () => {
           ref={chartRef}
           data={data}
           coord={{
-            type: Rect,
+            type: 'rect',
           }}
           scale={{}}
         >
@@ -29,7 +29,7 @@ describe('Point Chart', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -47,7 +47,7 @@ describe('Point Chart', () => {
           ref={chartRef}
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
           }}
           scale={{}}
         >
@@ -57,7 +57,7 @@ describe('Point Chart', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -74,7 +74,7 @@ describe('Point Chart', () => {
           ref={chartRef}
           data={data}
           coord={{
-            type: Rect,
+            type: 'rect',
           }}
           scale={{}}
         >
@@ -92,7 +92,7 @@ describe('Point Chart', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -142,7 +142,7 @@ describe('Point Chart', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(100);
     expect(context).toMatchImageSnapshot();

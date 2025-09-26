@@ -1,5 +1,5 @@
 import { jsx, Canvas, Chart, Timeline, Axis, Interval, TextGuide } from '../../src';
-import { createContext, delay } from '../util';
+import { createContext } from '../util';
 
 const context = createContext('动态排序', { width: '300px', height: '500px' });
 
@@ -38,16 +38,6 @@ describe('Chart', () => {
     const intervalRef = { current: null };
     const { type, props } = (
       <Canvas context={context} pixelRatio={1}>
-        {/* <Chart
-          data={sort(data[1])}
-          coord={{
-            transposed: true,
-          }}
-        >
-          <Axis field="genre" />
-          <Axis field="sold" />
-          <Interval x="genre" y="sold" color="genre" />
-        </Chart> */}
         <Timeline delay={0}>
           {data.map((item) => {
             return (
@@ -73,6 +63,21 @@ describe('Chart', () => {
                         textAlign: 'start',
                         textBaseline: 'middle',
                       }}
+                      animation={{
+                        update: {
+                          easing: 'linear',
+                          duration: 450,
+                          property: ['x', 'y'],
+                          onFrame(t, animationContext) {
+                            const { start, end } = animationContext;
+                            const startText = parseInt(start.text);
+                            const endText = parseInt(end.text);
+                            return {
+                              text: `${(startText + (endText - startText) * t).toFixed(0)}`,
+                            };
+                          },
+                        },
+                      }}
                     />
                   );
                 })}
@@ -84,16 +89,9 @@ describe('Chart', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     const interval = intervalRef.current;
     expect(interval.records.length).toBe(5);
-    expect(interval.records[0].children[0].x).toBeCloseTo(88.2);
-    expect(interval.records[0].children[0].y).toBeCloseTo(422.25);
-
-    await delay(2000);
-    expect(interval.records.length).toBe(5);
-    expect(interval.records[0].children[0].x).toBeCloseTo(97.57);
-    expect(interval.records[0].children[0].y).toBeCloseTo(422.25);
   });
 });

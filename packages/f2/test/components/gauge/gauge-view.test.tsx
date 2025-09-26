@@ -1,4 +1,4 @@
-import { jsx } from '../../../src/jsx';
+import { jsx } from '../../../src';
 import { Canvas, withGauge } from '../../../src';
 import { createContext, delay } from '../../util';
 const context = createContext();
@@ -12,8 +12,8 @@ const Gauge = withGauge((props) => {
     <group>
       <arc
         attrs={{
-          x,
-          y,
+          cx: x,
+          cy: y,
           r,
           startAngle,
           endAngle: startAngle,
@@ -37,8 +37,8 @@ const Gauge = withGauge((props) => {
       />
       <sector
         attrs={{
-          x,
-          y,
+          cx: x,
+          cy: y,
           r0,
           r,
           startAngle,
@@ -87,6 +87,6 @@ describe('Gauge', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
   });
 });

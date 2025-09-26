@@ -1,8 +1,5 @@
+import { Component, jsx, computeLayout } from '@antv/f-engine';
 import { isFunction, find } from '@antv/util';
-import createRef from '../../createRef';
-import Component from '../../base/component';
-import { jsx } from '../../jsx';
-import { Ref } from '../../types';
 
 // view 的默认配置
 const defaultStyle = {
@@ -14,6 +11,11 @@ const defaultStyle = {
     lineWidth: '2px',
   },
   showTooltipMarker: false,
+  markerBackgroundStyle: {
+    fill: '#CCD6EC',
+    opacity: 0.3,
+    padding: '6px',
+  },
   tooltipMarkerStyle: {
     fill: '#fff',
     lineWidth: '3px',
@@ -87,9 +89,9 @@ function directionEnabled(mode: string, dir: string) {
 }
 
 const RenderItemMarker = (props) => {
-  const { records, coord, context } = props;
+  const { records, coord, context, markerBackgroundStyle } = props;
   const point = coord.convertPoint({ x: 1, y: 1 });
-  const padding = context.px2hd('6px');
+  const padding = context.px2hd(markerBackgroundStyle.padding || '6px');
   const xPoints = [
     ...records.map((record) => record.xMin),
     ...records.map((record) => record.xMax),
@@ -117,41 +119,42 @@ const RenderItemMarker = (props) => {
 
   return (
     <rect
-      attrs={{
+      style={{
         x,
         y,
         width,
         height,
-        fill: '#CCD6EC',
-        opacity: 0.3,
+        ...markerBackgroundStyle,
       }}
     />
   );
 };
 
 const RenderCrosshairs = (props) => {
-  const { records, coord, chart, crosshairsType, crosshairsStyle } = props;
-    const {
-      left: coordLeft,
-      top: coordTop,
-      right: coordRight,
-      bottom: coordBottom,
-      center
-    } = coord;  
+  const {
+    records,
+    coord,
+    chart,
+    crosshairsType,
+    crosshairsStyle,
+    xPositionType,
+    yPositionType,
+  } = props;
+  const { left: coordLeft, top: coordTop, right: coordRight, bottom: coordBottom, center } = coord;
   const firstRecord = records[0];
-  const { x, y, origin, xField } = firstRecord;
-  if(coord.isPolar) {
+  const { x, y, origin, xField, coord: coordData } = firstRecord;
+  if (coord.isPolar) {
     // 极坐标下的辅助线
     const xScale = chart.getScale(xField);
     const ticks = xScale.getTicks();
-    const tick = find<any>(ticks, (tick) => origin[xField] === tick.tickValue);      
+    const tick = find<any>(ticks, (tick) => origin[xField] === tick.tickValue);
     const end = coord.convertPoint({
       x: tick.value,
       y: 1,
     });
     return (
       <line
-        attrs={{
+        style={{
           x1: center.x,
           y1: center.y,
           x2: end.x,
@@ -166,21 +169,21 @@ const RenderCrosshairs = (props) => {
     <group>
       {directionEnabled(crosshairsType, 'x') ? (
         <line
-          attrs={{
+          style={{
             x1: coordLeft,
-            y1: y,
+            y1: yPositionType === 'coord' ? coordData.y : y,
             x2: coordRight,
-            y2: y,
+            y2: yPositionType === 'coord' ? coordData.y : y,
             ...crosshairsStyle,
           }}
         />
       ) : null}
       {directionEnabled(crosshairsType, 'y') ? (
         <line
-          attrs={{
-            x1: x,
+          style={{
+            x1: xPositionType === 'coord' ? coordData.x : x,
             y1: coordTop,
-            x2: x,
+            x2: xPositionType === 'coord' ? coordData.x : x,
             y2: coordBottom,
             ...crosshairsStyle,
           }}
@@ -188,67 +191,250 @@ const RenderCrosshairs = (props) => {
       ) : null}
     </group>
   );
+};
+
+const RenderXTip = (props) => {
+  const { records, coord, xTip, xPositionType, xTipTextStyle, xTipBackground } = props;
+
+  const { bottom: coordBottom } = coord;
+
+  const firstRecord = records[0];
+  const { x, coord: coordData } = firstRecord;
+  const { name: xFirstText } = firstRecord;
+
+  return (
+    <rect
+      style={{
+        display: 'flex',
+        left: xPositionType === 'coord' ? coordData.x : x,
+        top: coordBottom,
+        ...xTipBackground,
+      }}
+    >
+      <text
+        style={{
+          ...xTipTextStyle,
+          text:
+            xPositionType === 'coord'
+              ? coordData.xText
+              : isFunction(xTip)
+              ? xTip(xFirstText, firstRecord)
+              : xFirstText,
+        }}
+      />
+    </rect>
+  );
+};
+
+const RenderYTip = (props) => {
+  const { records, coord, yTip, yPositionType, yTipTextStyle, yTipBackground } = props;
+
+  const { left: coordLeft } = coord;
+
+  const firstRecord = records[0];
+  const { y, coord: coordData } = firstRecord;
+  const { value: yFirstText } = firstRecord;
+  return (
+    <rect
+      style={{
+        display: 'flex',
+        left: coordLeft,
+        top: yPositionType === 'coord' ? coordData.y : y,
+        ...yTipBackground,
+      }}
+    >
+      <text
+        style={{
+          ...yTipTextStyle,
+          text:
+            yPositionType === 'coord'
+              ? coordData.yText
+              : isFunction(yTip)
+              ? yTip(yFirstText, firstRecord)
+              : yFirstText,
+        }}
+      />
+    </rect>
+  );
+};
+
+// tooltip 内容框
+class RenderLabel extends Component {
+  style = {};
+
+  getMaxItemBox(node) {
+    let maxItemWidth = 0;
+    let maxItemHeight = 0;
+    (node.children || []).forEach((child) => {
+      const { layout } = child;
+      const { width, height } = layout;
+
+      maxItemWidth = Math.max(maxItemWidth, width);
+      maxItemHeight = Math.max(maxItemHeight, height);
+    });
+
+    return {
+      width: maxItemWidth,
+      height: maxItemHeight,
+    };
+  }
+
+  _getContainerLayout() {
+    const { records, coord } = this.props;
+
+    if (!records || !records.length) return;
+    const { width } = coord;
+
+    const node = computeLayout(this, this.render());
+    const { width: itemMaxWidth } = this.getMaxItemBox(node?.children[0]);
+
+    // 每行最多的个数
+    const lineMaxCount = Math.max(1, Math.floor(width / itemMaxWidth));
+    const itemCount = records.length;
+
+    // 是否需要换行
+    if (itemCount > lineMaxCount) {
+      this.style = {
+        width,
+      };
+    }
+  }
+
+  willMount(): void {
+    this._getContainerLayout();
+  }
+
+  render() {
+    const {
+      records,
+      background,
+      showItemMarker,
+      itemMarkerStyle,
+      customText,
+      nameStyle,
+      valueStyle,
+      joinString,
+      arrowWidth,
+      x,
+      coord,
+      itemWidth,
+    } = this.props;
+
+    // 显示内容
+    const labelView = (left: number, top: number) => {
+      return (
+        <group style={{ display: 'flex' }}>
+          <group
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              padding: [0, 0, 0, '6px'],
+              left,
+              top,
+              ...this.style,
+              ...background,
+            }}
+          >
+            {records.map((record) => {
+              const { name, value } = record;
+              return (
+                <group
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: [0, '6px', 0, 0],
+                    width: itemWidth,
+                  }}
+                >
+                  {showItemMarker ? (
+                    <marker
+                      style={{
+                        width: itemMarkerStyle.width,
+                        marginRight: '6px',
+                        ...itemMarkerStyle,
+                        fill: record.color,
+                      }}
+                    />
+                  ) : null}
+                  {customText && isFunction(customText) ? (
+                    customText(record)
+                  ) : (
+                    <group
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'row',
+                      }}
+                    >
+                      <text
+                        style={{
+                          ...nameStyle,
+                          text: value ? `${name}${joinString}` : name,
+                        }}
+                      />
+                      <text
+                        style={{
+                          ...valueStyle,
+                          text: value,
+                        }}
+                      />
+                    </group>
+                  )}
+                </group>
+              );
+            })}
+          </group>
+          <group>
+            <polygon
+              style={{
+                points: [
+                  [x - arrowWidth, top],
+                  [x + arrowWidth, top],
+                  [x, top + arrowWidth],
+                ],
+                fill: background.fill,
+              }}
+            />
+          </group>
+        </group>
+      );
+    };
+
+    // 计算显示位置
+    const { layout } = computeLayout(this, labelView(0, 0)); // 获取内容区大小
+    const { left: coordLeft, top: coordTop, right: coordRight } = coord;
+    const { width, height } = layout;
+
+    const halfWidth = width / 2;
+    // 让 tooltip 限制在 coord 的显示范围内
+    const advanceLeft = x - halfWidth;
+    const advanceTop = coordTop - height;
+
+    const left =
+      advanceLeft < coordLeft
+        ? coordLeft
+        : advanceLeft > coordRight - width
+        ? coordRight - width
+        : advanceLeft;
+
+    const top = advanceTop < 0 ? 0 : advanceTop;
+
+    return labelView(left, top);
+  }
 }
 
 export default class TooltipView extends Component {
-  rootRef: Ref;
-  arrowRef: Ref;
-
-  constructor(props) {
-    super(props);
-    this.rootRef = createRef();
-    this.arrowRef = createRef();
-  }
-  // 调整 显示的位置
-  _position() {
-    const { props, context, rootRef, arrowRef } = this;
-    const group = rootRef.current;
-    if (!group) {
-      return;
-    }
-    const { records, coord } = props;
-    const arrowWidth = context.px2hd('6px');
-    const record = records[0];
-    // 中心点
-    const { x } = record;
-    const { left: coordLeft, width: coordWidth } = coord;
-    const { y, width, height, radius } = group.get('attrs');
-    const halfWidth = width / 2;
-    // 让 tooltip 限制在 coord 的显示范围内
-    const offsetX = Math.min(
-      Math.max(x - coordLeft - halfWidth, -arrowWidth - radius),
-      coordWidth - width + arrowWidth + radius
-    );
-
-    // 因为默认是从 coord 的范围内显示的，所以要往上移，移出 coord，避免挡住 geometry
-    const offset = Math.min(y, height + arrowWidth); // 因为不能超出 canvas 画布区域，所以最大只能是 y
-    group.moveTo(offsetX, -offset);
-    arrowRef.current.moveTo(0, height - offset);
-  }
-  didMount() {
-    this._position();
-  }
-  didUpdate() {
-    this._position();
-  }
   render() {
     const { props, context } = this;
     const { records, coord } = props;
-    const {
-      left: coordLeft,
-      top: coordTop,
-      bottom: coordBottom,
-      // width: coordWidth,
-    } = coord;
     const firstRecord = records[0];
-    const { x, y } = firstRecord;
-    const { name: xFirstText, value: yFirstText } = firstRecord;
+    const { x, coord: coordData } = firstRecord;
     const {
       chart,
       background: customBackground,
-      // showTitle,
-      // titleStyle,
       showTooltipMarker = defaultStyle.showTooltipMarker,
+      markerBackgroundStyle = defaultStyle.markerBackgroundStyle,
       showItemMarker = defaultStyle.showItemMarker,
       itemMarkerStyle: customItemMarkerStyle,
       nameStyle,
@@ -260,7 +446,9 @@ export default class TooltipView extends Component {
       snap = defaultStyle.snap,
       tooltipMarkerStyle = defaultStyle.tooltipMarkerStyle,
       showXTip,
+      xPositionType,
       showYTip,
+      yPositionType,
       xTip,
       yTip,
       xTipTextStyle = defaultStyle.xTipTextStyle,
@@ -268,10 +456,12 @@ export default class TooltipView extends Component {
       xTipBackground = defaultStyle.xTipBackground,
       yTipBackground = defaultStyle.yTipBackground,
       custom = false,
+      customText,
+      itemWidth,
     } = props;
     const itemMarkerStyle = {
-      ...customItemMarkerStyle,
       ...defaultStyle.itemMarkerStyle,
+      ...customItemMarkerStyle,
     };
 
     const background = {
@@ -283,169 +473,83 @@ export default class TooltipView extends Component {
 
     return (
       <group>
-        <group
-          style={{
-            left: coordLeft,
-            top: coordTop,
-          }}
-        >
-          {/* 非自定义模式时显示的文本信息 */}
-          {!custom && (<group>
-            <group ref={this.rootRef} style={background} attrs={background}>
-              {/* {showTitle ? (
-                <text
+        {showTooltipMarker ? (
+          <RenderItemMarker
+            coord={coord}
+            context={context}
+            records={records}
+            markerBackgroundStyle={markerBackgroundStyle}
+          />
+        ) : null}
+        {/* 辅助线 */}
+        {showCrosshairs ? (
+          <RenderCrosshairs
+            chart={chart}
+            coord={coord}
+            records={records}
+            xPositionType={xPositionType}
+            yPositionType={yPositionType}
+            crosshairsType={crosshairsType}
+            crosshairsStyle={{ ...defaultStyle.crosshairsStyle, ...crosshairsStyle }}
+          />
+        ) : null}
+        {/* 辅助点 */}
+        {snap
+          ? records.map((item) => {
+              const { x, y, color, shape } = item;
+              return (
+                <circle
                   style={{
-                    marginBottom: '6px',
-                  }}
-                  attrs={{
-                    text: firstOrigin[xField],
-                    fontSize: '24px',
-                    fill: '#fff',
-                    textAlign: 'start',
-                    ...titleStyle,
+                    cx: xPositionType === 'coord' ? coordData.x : x,
+                    cy: yPositionType === 'coord' ? coordData.y : y,
+                    r: '6px',
+                    stroke: color,
+                    fill: color,
+                    ...shape,
+                    ...tooltipMarkerStyle,
                   }}
                 />
-              ) : null} */}
-              <group
-                style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  flexWrap: 'wrap',
-                  padding: [0, 0, 0, '6px'],
-                }}
-              >
-                {records.map((record) => {
-                  const { name, value } = record;
-                  return (
-                    <group
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        padding: [0, '6px', 0, 0],
-                      }}
-                    >
-                      {showItemMarker ? (
-                        <marker
-                          style={{
-                            width: itemMarkerStyle.width,
-                            marginRight: '6px',
-                          }}
-                          attrs={{
-                            ...itemMarkerStyle,
-                            fill: record.color,
-                          }}
-                        />
-                      ) : null}
-                      <text
-                        attrs={{
-                          ...defaultStyle.nameStyle,
-                          ...nameStyle,
-                          text: value ? `${name}${joinString}` : name,
-                        }}
-                      />
-                      <text
-                        attrs={{
-                          ...defaultStyle.valueStyle,
-                          ...valueStyle,
-                          text: value,
-                        }}
-                      />
-                    </group>
-                  );
-                })}
-              </group>
-            </group>
-            <polygon
-              ref={this.arrowRef}
-              attrs={{
-                points: [
-                  { x: x - arrowWidth, y: coordTop },
-                  { x: x + arrowWidth, y: coordTop },
-                  { x: x, y: coordTop + arrowWidth },
-                ],
-                fill: background.fill,
-              }}
-            />
-          </group>)}
-          {showTooltipMarker ? (
-            <RenderItemMarker coord={coord} context={context} records={records} />
-          ) : null}
-          {/* 辅助线 */}
-          {showCrosshairs ? (
-            <RenderCrosshairs
-              chart={chart}
-              coord={coord}
-              records={records}
-              crosshairsType={crosshairsType}
-              crosshairsStyle={{...defaultStyle.crosshairsStyle, ...crosshairsStyle}}
-            />
-          ) : null}
-          {/* 辅助点 */}
-          {snap
-            ? records.map((item) => {
-                const { x, y, color, shape } = item;
-                return (
-                  <circle
-                    attrs={{
-                      x,
-                      y,
-                      r: '6px',
-                      stroke: color,
-                      fill: color,
-                      ...shape,
-                      ...tooltipMarkerStyle,
-                    }}
-                  />
-                );
-              })
-            : null}
-        </group>
+              );
+            })
+          : null}
         {/* X 轴辅助信息 */}
         {showXTip && (
-          <group
-            style={{
-              left: x,
-              top: coordBottom,
-              ...defaultStyle.xTipBackground,
-              ...xTipBackground,
-            }}
-            attrs={{
-              ...defaultStyle.xTipBackground,
-              ...xTipBackground,
-            }}
-          >
-            <text
-              attrs={{
-                ...defaultStyle.xTipTextStyle,
-                ...xTipTextStyle,
-                text: isFunction(xTip) ? xTip(xFirstText) : xFirstText,
-              }}
-            />
-          </group>
+          <RenderXTip
+            records={records}
+            coord={coord}
+            xTip={xTip}
+            xPositionType={xPositionType}
+            xTipTextStyle={{ ...defaultStyle.xTipTextStyle, ...xTipTextStyle }}
+            xTipBackground={{ ...defaultStyle.xTipBackground, ...xTipBackground }}
+          />
         )}
         {/* Y 轴辅助信息 */}
         {showYTip && (
-          <group
-            style={{
-              left: coordLeft,
-              top: y,
-              ...defaultStyle.yTipBackground,
-              ...yTipBackground,
-            }}
-            attrs={{
-              ...defaultStyle.yTipBackground,
-              ...yTipBackground,
-            }}
-          >
-            <text
-              attrs={{
-                ...defaultStyle.yTipTextStyle,
-                ...yTipTextStyle,
-                text: isFunction(yTip) ? yTip(yFirstText) : yFirstText,
-              }}
-            />
-          </group>
+          <RenderYTip
+            records={records}
+            coord={coord}
+            yTip={yTip}
+            yPositionType={yPositionType}
+            yTipTextStyle={{ ...defaultStyle.yTipTextStyle, ...yTipTextStyle }}
+            yTipBackground={{ ...defaultStyle.yTipBackground, ...yTipBackground }}
+          />
+        )}
+        {/* 非自定义模式时显示的文本信息 */}
+        {!custom && (
+          <RenderLabel
+            records={records}
+            coord={coord}
+            itemMarkerStyle={itemMarkerStyle}
+            customText={customText}
+            showItemMarker={showItemMarker}
+            x={x}
+            arrowWidth={arrowWidth}
+            background={background}
+            nameStyle={{ ...defaultStyle.nameStyle, ...nameStyle }}
+            valueStyle={{ ...defaultStyle.valueStyle, ...valueStyle }}
+            joinString={joinString}
+            itemWidth={itemWidth}
+          />
         )}
       </group>
     );

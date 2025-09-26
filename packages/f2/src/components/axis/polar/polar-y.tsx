@@ -1,11 +1,13 @@
-import { jsx } from '../../../jsx';
-import { Vector2 } from '@antv/f2-graphic';
+import { jsx } from '@antv/f-engine';
+import { vec2 } from 'gl-matrix';
 import { PolarProps } from '../types';
 
 export default (props: PolarProps) => {
-  const { ticks, coord, style, grid: gridType } = props;
+  const { ticks: originTicks, coord, style, grid: gridType } = props;
   const { center } = coord;
   const { grid, tickLine, line, labelOffset, label } = style;
+  const ticks = originTicks.filter((d) => !isNaN(d.value));
+
   return (
     <group>
       {grid
@@ -15,10 +17,12 @@ export default (props: PolarProps) => {
             if (gridType !== 'line') {
               return (
                 <arc
-                  attrs={{
-                    x: center.x,
-                    y: center.y,
-                    r: Vector2.length([end.x - center.x, end.y - center.y]),
+                  style={{
+                    cx: center.x,
+                    cy: center.y,
+                    startAngle: 0,
+                    endAngle: 360,
+                    r: vec2.length([end.x - center.x, end.y - center.y]),
                     ...grid,
                     ...gridStyle,
                   }}
@@ -28,7 +32,7 @@ export default (props: PolarProps) => {
             return (
               <polyline
                 attrs={{
-                  points: gridPoints,
+                  points: gridPoints.map((d) => [d.x, d.y]),
                   ...grid,
                   ...gridStyle,
                 }}

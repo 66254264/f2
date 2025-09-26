@@ -1,12 +1,11 @@
-import { jsx } from '../../jsx';
-import Component from '../../base/component';
-import { partition, hierarchy } from 'd3-hierarchy';
+import { jsx, Ref, Component } from '@antv/f-engine';
+import { partition, hierarchy } from '../../deps/d3-hierarchy/src';
 import { Category } from '../../attr';
-import { isInBBox } from '../../util';
 import CoordController from '../../controller/coord';
 import { mix, isFunction } from '@antv/util';
-import Coord from '../../coord';
-import { Ref } from '../../types';
+import Theme from '../../theme';
+import { Data, DataRecord } from '../../chart/Data';
+import { CoordProps } from '../../chart/Coord';
 
 function rootParent(data) {
   let d = data;
@@ -15,50 +14,52 @@ function rootParent(data) {
   }
   return d;
 }
+export interface ColorAttrObject {
+  field: string;
+  range?: any[];
+  callback?: (value) => any;
+}
+
+export interface SunburstProps<TRecord extends DataRecord = DataRecord> {
+  data: Data<TRecord>;
+  coord?: CoordProps;
+  color?: any[] | ColorAttrObject;
+  value?: string;
+  sort?: boolean;
+  onClick?: (ev) => void;
+}
 
 export default (View) => {
-  return class Sunburst extends Component {
-    coordController: CoordController;
-    coord: Coord;
+  return class Sunburst<
+    TRecord extends DataRecord = DataRecord,
+    IProps extends SunburstProps<TRecord> = SunburstProps<TRecord>
+  > extends Component<IProps> {
+    coord: CoordController;
     color: Category;
     triggerRef: Ref[];
 
-    constructor(props, context) {
+    constructor(props: IProps, context) {
       super(props, context);
-      const { coord, color, data } = props;
-      const { width, height, theme } = context;
+      const { color, data } = props;
 
-      this.coordController = new CoordController();
+      this.coord = new CoordController();
 
-      const { coordController } = this;
-      this.coord = coordController.create(coord, { width, height });
       this.color = new Category({
-        range: theme.colors,
+        range: Theme.colors,
         ...color,
         data,
       });
     }
 
-    didMount() {
-      const { props, container } = this;
-      const { onClick } = props;
-      const canvas = container.get('canvas');
+    willMount() {
+      const { props, coord, layout } = this;
+      const { coord: coordOption } = props;
+      coord.updateLayout(layout);
 
-      this.triggerRef = [];
-
-      canvas.on('click', (ev) => {
-        const { points } = ev;
-        const shape = this.triggerRef.find((ref) => {
-          return isInBBox(ref.current.getBBox(), points[0]);
-        });
-        if (shape) {
-          ev.shape = shape;
-          // @ts-ignore
-          ev.payload = shape.payload;
-          onClick && onClick(ev);
-        }
-      });
+      coord.create(coordOption);
     }
+
+    didMount() {}
 
     _mapping(children) {
       const { color: colorAttr, coord } = this;
@@ -68,7 +69,7 @@ export default (View) => {
         const color = colorAttr.mapping(root.data[colorAttr.field]);
         node.color = color;
         const { x0, x1, y0, y1 } = node;
-        const rect = coord.convertRect({
+        const rect = coord.getCoord().convertRect({
           x: [x0, x1],
           y: [y0, y1],
         });
@@ -103,7 +104,7 @@ export default (View) => {
     render() {
       const node = this.sunburst();
       const { coord, props } = this;
-      return <View {...props} coord={coord} node={node} triggerRef={this.triggerRef} />;
+      return <View {...props} coord={coord.getCoord()} node={node} triggerRef={this.triggerRef} />;
     }
   };
 };

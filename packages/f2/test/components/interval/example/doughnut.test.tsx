@@ -2,7 +2,7 @@ import { jsx } from '../../../../src';
 import { Polar, Rect } from '../../../../src/coord';
 import { Canvas, Chart } from '../../../../src';
 import { Interval, Axis, Legend, Tooltip, ArcGuide, TextGuide } from '../../../../src/components';
-import { createContext, delay } from '../../../util';
+import { createContext, delay, gestureSimulator } from '../../../util';
 
 describe('环形图', () => {
   it('基础环形图', async () => {
@@ -23,6 +23,12 @@ describe('环形图', () => {
         a: '1',
       },
     ];
+
+    const map = {};
+    data.forEach(function(obj) {
+      map[obj.name] = obj.percent + '%';
+    });
+
     const context = createContext('基础环形图');
     const chartRef = { current: null };
     const { type, props } = (
@@ -31,7 +37,7 @@ describe('环形图', () => {
           ref={chartRef}
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
             transposed: true,
             innerRadius: 0.7,
             radius: 0.85,
@@ -47,12 +53,19 @@ describe('环形图', () => {
               range: ['#FE5D4D', '#3BA4FF', '#737DDE'],
             }}
           />
+          <Legend
+            position="right"
+            itemFormatter={(value, name) => {
+              return map[name];
+            }}
+            valuePrefix="      "
+          />
         </Chart>
       </Canvas>
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -98,7 +111,7 @@ describe('环形图', () => {
           ref={chartRef}
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
             transposed: true,
             innerRadius: 0.5,
           }}
@@ -111,7 +124,7 @@ describe('环形图', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -131,7 +144,7 @@ describe('环形图', () => {
           ref={chartRef}
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
             transposed: true,
             innerRadius: 0.8,
           }}
@@ -176,7 +189,7 @@ describe('环形图', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
     expect(context).toMatchImageSnapshot();
@@ -184,8 +197,8 @@ describe('环形图', () => {
 
   it('基础环形图 - 数值的和刚好等于nice处理后的最后一个tick值', async () => {
     const data = [
-      { "type": "fundType", "name": "偏债型", "percent": 3 },
-      { "type": "fundType", "name": "偏股型", "percent": 97 }
+      { type: 'fundType', name: '偏债型', percent: 3 },
+      { type: 'fundType', name: '偏股型', percent: 97 },
     ];
     const context = createContext('基础环形图');
     const chartRef = { current: null };
@@ -195,7 +208,7 @@ describe('环形图', () => {
           ref={chartRef}
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
             transposed: true,
             innerRadius: 0.7,
             radius: 0.85,
@@ -215,9 +228,92 @@ describe('环形图', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(1000);
+    expect(context).toMatchImageSnapshot();
+  });
+
+  it('玫瑰环形图', async () => {
+    const data = [
+      {
+        name: '股票类',
+        percent: 10,
+        a: [0, 83],
+      },
+      {
+        name: '债券类',
+        percent: 40,
+        a: [83, 110],
+      },
+      {
+        name: '现金类',
+        percent: 80,
+        a: [110, 134],
+      },
+    ];
+
+    const map = {};
+    data.forEach(function(obj) {
+      map[obj.name] = obj.percent + '%';
+    });
+
+    const context = createContext('基础环形图');
+    const chartRef = { current: null };
+    const { type, props } = (
+      <Canvas context={context} pixelRatio={1} animate={false}>
+        <Chart
+          ref={chartRef}
+          data={data}
+          coord={{
+            type: 'polar',
+            transposed: false,
+            innerRadius: 0.7,
+            radius: 1,
+          }}
+          scale={{
+            a: {
+              type: 'linear',
+              nice: false,
+            },
+          }}
+        >
+          <Interval
+            x="a"
+            y="percent"
+            adjust="stack"
+            color={{
+              field: 'name',
+              range: ['#FE5D4D', '#3BA4FF', '#737DDE'],
+            }}
+            selection={{
+              selectedStyle: (value) => {
+                return {
+                  r: value.yMax * 1.4,
+                };
+              },
+            }}
+          />
+          <Legend
+            position="right"
+            itemFormatter={(value, name) => {
+              return map[name];
+            }}
+            valuePrefix="      "
+          />
+        </Chart>
+      </Canvas>
+    );
+
+    const canvas = new Canvas(props);
+    await canvas.render();
+
+    await delay(1000);
+    expect(context).toMatchImageSnapshot();
+    await delay(20);
+
+    await gestureSimulator(context.canvas, 'click', { x: 133, y: 64 });
+    await delay(200);
     expect(context).toMatchImageSnapshot();
   });
 });

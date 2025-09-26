@@ -1,8 +1,7 @@
 import { jsx } from '../../../src';
-import { Polar } from '../../../src/coord';
 import { Canvas, Chart } from '../../../src';
 import { Interval, PieLabel } from '../../../src/components';
-import { createContext, delay } from '../../util';
+import { createContext, delay, gestureSimulator } from '../../util';
 
 describe('PieLabel', () => {
   it('默认显示', async () => {
@@ -34,7 +33,7 @@ describe('PieLabel', () => {
         <Chart
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
             transposed: true,
             innerRadius: 0.3,
             radius: 0.5,
@@ -59,10 +58,80 @@ describe('PieLabel', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(300);
     expect(context).toMatchImageSnapshot();
+  });
+
+  it('事件回调对象', async () => {
+    const onClickCallback = jest.fn();
+    const context = createContext('事件回调对象', { width: '300px', height: '150px' });
+    const data = [
+      {
+        amount: 20,
+        memo: 'Study',
+        const: 'const',
+      },
+      {
+        amount: 10,
+        memo: 'Eat',
+        const: 'const',
+      },
+      {
+        amount: 20,
+        memo: 'Sports',
+        const: 'const',
+      },
+      {
+        amount: 10,
+        memo: 'Other',
+        const: 'const',
+      },
+    ];
+    const { props } = (
+      <Canvas context={context} animate={false} pixelRatio={1}>
+        <Chart
+          data={data}
+          coord={{
+            type: 'polar',
+            transposed: true,
+            innerRadius: 0.3,
+            radius: 0.5,
+          }}
+        >
+          <Interval x="const" y="amount" adjust="stack" color="memo" />
+          <PieLabel
+            label1={(data) => {
+              return {
+                text: data.memo,
+              };
+            }}
+            label2={(data) => {
+              return {
+                fill: '#000000',
+                text: '$' + data.amount.toFixed(2),
+              };
+            }}
+            onClick={(data) => {
+              onClickCallback(data);
+            }}
+          />
+        </Chart>
+      </Canvas>
+    );
+
+    const canvas = new Canvas(props);
+    await canvas.render();
+
+    await delay(300);
+    gestureSimulator(context.canvas, 'click', { x: 266, y: 94 });
+
+    expect(onClickCallback.mock.calls[0][0].origin).toStrictEqual({
+      amount: 10,
+      memo: 'Eat',
+      const: 'const',
+    });
   });
 
   it('左边超过最大显示个数，第四象限显示在第一象限', async () => {
@@ -107,7 +176,7 @@ describe('PieLabel', () => {
         <Chart
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
             transposed: true,
             innerRadius: 0.3,
             radius: 0.5,
@@ -132,7 +201,7 @@ describe('PieLabel', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(300);
     expect(context).toMatchImageSnapshot();
@@ -180,7 +249,7 @@ describe('PieLabel', () => {
         <Chart
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
             transposed: true,
             innerRadius: 0.3,
             radius: 0.5,
@@ -205,7 +274,7 @@ describe('PieLabel', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(300);
     expect(context).toMatchImageSnapshot();
@@ -253,7 +322,7 @@ describe('PieLabel', () => {
         <Chart
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
             transposed: true,
             innerRadius: 0.3,
             radius: 0.5,
@@ -278,7 +347,7 @@ describe('PieLabel', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(300);
     expect(context).toMatchImageSnapshot();
@@ -327,7 +396,7 @@ describe('PieLabel', () => {
         <Chart
           data={data}
           coord={{
-            type: Polar,
+            type: 'polar',
             transposed: true,
             innerRadius: 0.3,
             radius: 0.5,
@@ -352,7 +421,7 @@ describe('PieLabel', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(300);
     expect(context).toMatchImageSnapshot();

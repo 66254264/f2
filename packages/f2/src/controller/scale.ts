@@ -1,7 +1,33 @@
-import { each, mix, isNil, isFunction, isNumber, valuesOfKey, getRange } from '@antv/util';
-import { registerTickMethod, Scale, getScale, ScaleConfig } from '@antv/scale';
-import CatTick from './scale/cat-tick';
-import LinearTick from './scale/linear-tick';
+import { each, getRange, isFunction, isNil, isNumber, mix, valuesOfKey } from '@antv/util';
+import {
+  getScale,
+  registerTickMethod,
+  Scale,
+  ScaleConfig,
+  registerScale,
+  Category,
+  Identity,
+  Linear,
+  Log,
+  Pow,
+  Time,
+  TimeCat,
+  Quantize,
+  Quantile,
+} from '../deps/f2-scale/src';
+import CatTick from './tick/cat-tick';
+import LinearTick from './tick/linear-tick';
+
+registerScale('cat', Category);
+registerScale('category', Category);
+registerScale('identity', Identity);
+registerScale('linear', Linear);
+registerScale('log', Log);
+registerScale('pow', Pow);
+registerScale('time', Time);
+registerScale('timeCat', TimeCat);
+registerScale('quantize', Quantize);
+registerScale('quantile', Quantile);
 
 // 覆盖0.3.x的 cat 方法
 registerTickMethod('cat', CatTick);
@@ -65,6 +91,7 @@ class ScaleController {
       if (isNil(option.max)) {
         option.max = max;
       }
+      option.values = values.sort((a, b) => a - b);
       return option;
     }
     // 分类类型和 timeCat 类型，调整 range
@@ -107,7 +134,8 @@ class ScaleController {
     options[field] = mix({}, options[field], option);
     // 如果scale有更新，scale 也需要重新创建
     if (scales[field]) {
-      delete scales[field];
+      scales[field].change(options[field]);
+      // delete scales[field];
     }
   }
 
@@ -120,10 +148,6 @@ class ScaleController {
     each(options, (option: ScaleOption, field: string) => {
       this.setScale(field, option);
     });
-    // 为了让外部感知到scale有变化
-    this.scales = {
-      ...this.scales,
-    };
   }
 
   changeData(data) {
@@ -140,6 +164,14 @@ class ScaleController {
 
     const scale = scales[field];
     if (scale) {
+      // for adjust=dodge, 需要更新 range
+      const option = this._getOption({
+        ...options[field],
+        values: scale.values,
+      });
+      if (option.range) {
+        scale.range = option.range;
+      }
       return scale;
     }
     const option = options[field];
@@ -163,6 +195,17 @@ class ScaleController {
       this.getScale(field);
     });
     return scales;
+  }
+
+  getOptions() {
+    const { scales } = this;
+
+    const options = {};
+    each(scales, (scale, field: string) => {
+      options[field] = { ...scale.__cfg__ };
+    });
+
+    return options;
   }
 
   adjustStartZero(scale: Scale) {
@@ -196,6 +239,37 @@ class ScaleController {
     scale.change({
       nice: false,
     });
+  }
+
+  //堆叠下的scale调整
+  _updateStackRange(scale: Scale, flattenArray) {
+    const { options } = this;
+    const { field } = scale;
+    const option = options[field];
+
+    let dataMin = Infinity;
+    let dataMax = -Infinity;
+    for (let i = 0, len = flattenArray.length; i < len; i++) {
+      const obj = flattenArray[i];
+      const tmpMin = Math.min.apply(null, obj[field]);
+      const tmpMax = Math.max.apply(null, obj[field]);
+      if (tmpMin < dataMin) {
+        dataMin = tmpMin;
+      }
+      if (tmpMax > dataMax) {
+        dataMax = tmpMax;
+      }
+    }
+
+    // 如果有定义，则优先级更高
+    const min = option?.min || dataMin;
+    const max = option?.max || dataMax;
+    if (min !== scale.min || max !== scale.max) {
+      scale.change({
+        min,
+        max,
+      });
+    }
   }
 
   // 获取scale 在 0点对位置的值

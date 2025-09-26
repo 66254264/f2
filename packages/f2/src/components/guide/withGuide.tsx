@@ -1,66 +1,31 @@
-import { jsx } from '../../jsx';
-import Component from '../../base/component';
+import { jsx, Component, ComponentType, ClassComponent } from '@antv/f-engine';
 import { isString, isNil, isFunction } from '@antv/util';
-import { Ref } from '../../types';
-import Chart from '../../chart';
-import { renderShape } from '../../base/diff';
+import Chart, { ChartChildProps, Point } from '../../chart';
+import { computeLayout, AnimationProps } from '@antv/f-engine';
 
-function isInBBox(bbox, point) {
-  const { minX, maxX, minY, maxY } = bbox;
-  const { x, y } = point;
-  return minX <= x && maxX >= x && minY <= y && maxY >= y;
+export interface GuideProps {
+  records: any;
+  onClick?: (ev) => void;
+  animation?: ((points: Point[], chart: Chart) => AnimationProps) | AnimationProps;
+  precise?: boolean;
+  [key: string]: any;
 }
 
-export default (View) => {
-  return class Guide extends Component {
+export default function<IProps extends GuideProps = GuideProps>(
+  View: ComponentType<IProps & ChartChildProps>
+): ClassComponent<IProps & ChartChildProps> {
+  return class Guide extends Component<IProps & ChartChildProps> {
     chart: Chart;
-    triggerRef: Ref;
 
-    constructor(props) {
+    constructor(props: IProps & ChartChildProps) {
       super(props);
-      // 创建ref
-      this.triggerRef = {};
-      this.state = {};
-    }
-
-    willMount() {
-      super.willMount();
-      this.getGuideBBox();
-    }
-
-    didMount() {
-      const { context, props } = this;
-      const { canvas } = context;
-      const { onClick } = props;
-
-      canvas.on('click', (ev) => {
-        const { points } = ev;
-        const shape = this.triggerRef.current;
-        if (!shape || shape.isDestroyed()) return;
-        const bbox = shape.getBBox();
-        if (isInBBox(bbox, points[0])) {
-          ev.shape = shape;
-          onClick && onClick(ev);
-        }
-      });
     }
 
     getGuideBBox() {
-      const shape = renderShape(this, this.render(), false);
-      const { x, y, width, height } = shape.get('attrs');
-      // getBBox 没有包含 padding 所以这里手动计算 bbox
-      const bbox = {
-        minX: x,
-        minY: y,
-        maxX: x + width,
-        maxY: y + height,
-        width,
-        height,
-      };
-      this.setState({
-        guideBBox: bbox,
-      });
-      shape.destroy();
+      const node = computeLayout(this, this.render());
+      const { layout } = node;
+      if (!layout) return;
+      return layout;
     }
 
     // 解析record里的模板字符串，如min、max、50%...
@@ -86,12 +51,41 @@ export default (View) => {
       return scale.scale(value);
     }
 
+    _numberic(data) {
+      const { chart } = this.props;
+      const scales = [chart.getXScales()[0], chart.getYScales()[0]];
+      const count = scales.length;
+      const newData = { ...data };
+      for (let i = 0; i < count; i++) {
+        const scale = scales[i];
+        if (scale.isCategory) {
+          const field = scale.field;
+          const value = scale.translate(newData[field]);
+          newData[field] = value;
+        }
+      }
+      return newData;
+    }
+
     parsePoint(record) {
       const { props } = this;
-      const { chart, coord } = props;
+      const { chart, coord, precise } = props;
+      const { adjust } = chart;
       const xScale = chart.getXScales()[0];
       // 只取第一个yScale
       const yScale = chart.getYScales()[0];
+      if (precise && adjust?.type === 'dodge') {
+        const xScale = chart.getXScales()[0];
+        const typeScale = chart.getColorScales()[0];
+        const numericRecord = this._numberic(record);
+
+        adjust.adjust.getPositionInfo(numericRecord, xScale.field, record[typeScale.field]);
+
+        const x = xScale.scale(numericRecord[xScale.field]);
+        const y = yScale.scale(numericRecord[yScale.field]);
+
+        return coord.convertPoint({ x, y });
+      }
 
       // 解析 record 为归一化后的坐标
       const x = this.parseReplaceStr(record[xScale.field], xScale);
@@ -112,33 +106,30 @@ export default (View) => {
 
     render() {
       const { props, context } = this;
-      const { coord, records = [], animation, chart } = props;
+      const { coord, records = [], animation, chart, style, onClick, visible = true } = props;
+      if (!visible) return;
       const { width, height } = context;
       const points = this.convertPoints(records);
       const theme = this.getGuideTheme();
-      const { guideWidth, guideHeight, guideBBox } = this.state;
-
-      let animationCfg = animation;
-      if (isFunction(animation)) {
-        // 透传绘制关键点和chart实例
-        animationCfg = animation(points, chart);
-      }
 
       return (
-        <View
-          triggerRef={this.triggerRef}
-          points={points}
-          theme={theme}
-          coord={coord}
-          {...props}
-          canvasWidth={width}
-          canvasHeight={height}
-          guideWidth={guideWidth}
-          guideHeight={guideHeight}
-          guideBBox={guideBBox}
-          animation={animationCfg}
-        />
+        <group
+          onClick={(ev) => {
+            onClick && onClick(ev);
+          }}
+        >
+          <View
+            points={points}
+            theme={theme}
+            coord={coord}
+            {...props}
+            canvasWidth={width}
+            canvasHeight={height}
+            style={isFunction(style) ? style(points, chart) : style}
+            animation={isFunction(animation) ? animation(points, chart) : animation}
+          />
+        </group>
       );
     }
   };
-};
+}

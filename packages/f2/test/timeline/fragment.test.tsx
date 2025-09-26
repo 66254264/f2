@@ -1,5 +1,4 @@
-import { jsx, Fragment, Canvas, Component } from '../../src';
-import Timeline from '../../src/timeline';
+import { jsx, Fragment, Canvas, Component, Timeline } from '../../src';
 import { createContext } from '../util';
 const context = createContext();
 
@@ -40,7 +39,7 @@ class Test extends Component {
 }
 
 describe('Timeline', () => {
-  it('timeline 播放', () => {
+  it('timeline 播放', async () => {
     const { type, props } = (
       <Canvas context={context} pixelRatio={2}>
         <Timeline delay={1000} start={0}>
@@ -57,6 +56,6 @@ describe('Timeline', () => {
     );
 
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
   });
 });

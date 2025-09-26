@@ -1,14 +1,22 @@
 {
   "npmClient": "yarn",
-  "useWorkspaces": true,
-  "version": "independent",
+  "packages": [
+    "packages/*"
+  ],
+  "version": "5.12.0",
   "command": {
     "bootstrap": {
       "ci": false,
-      "npmClientArgs": ["--no-package-lock"]
+      "npmClientArgs": [
+        "--no-package-lock"
+      ]
     },
     "publish": {
-      "commitHooks": false
+      "commitHooks": false,
+      "conventionalCommits": true,
+      "createRelease": "github",
+      "message": "🤖 publish",
+      "exact": true
     }
   }
 }

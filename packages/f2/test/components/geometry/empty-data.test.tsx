@@ -1,4 +1,4 @@
-import { jsx } from '../../../src/jsx';
+import { jsx } from '../../../src';
 import Geometry from '../../../src/components/geometry';
 import { createContext, delay } from '../../util';
 import { Canvas, createRef, Chart, Axis } from '../../../src';
@@ -16,8 +16,8 @@ class Custom extends Geometry {
             return (
               <circle
                 attrs={{
-                  x,
-                  y,
+                  cx: x,
+                  cy: y,
                   r: '20px',
                   fill: '#000',
                 }}
@@ -41,12 +41,12 @@ describe('empty data', () => {
       </Canvas>
     );
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(100);
 
-    expect(canvas.container.get('children').length).toBe(1);
-    expect(canvas.container.get('children')[0].get('children').length).toBe(0);
+    expect(canvas.container.children.length).toBe(1);
+    expect(canvas.container.children[0].children.length).toBe(0);
 
     canvas.destroy();
   });
@@ -63,7 +63,7 @@ describe('empty data', () => {
       </Canvas>
     );
     const canvas = new Canvas(props);
-    canvas.render();
+    await canvas.render();
 
     await delay(100);
     expect(context).toMatchImageSnapshot();

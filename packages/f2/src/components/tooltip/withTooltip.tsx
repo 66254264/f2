@@ -1,23 +1,36 @@
-import { jsx } from '../../jsx';
+import {
+  jsx,
+  Component,
+  isEqual,
+  TextStyleProps,
+  RectStyleProps,
+  LineStyleProps,
+} from '@antv/f-engine';
 import { isArray, isFunction, find } from '@antv/util';
-import Component from '../../base/component';
-import equal from '../../base/equal';
-import { DataRecord, px, TextAttrs, LineAttrs, RectAttrs } from '../../types';
 import { ChartChildProps } from '../../chart';
 
-export interface TooltipProps extends ChartChildProps {
+export interface DataRecord {
+  origin: any;
+  [k: string]: any;
+}
+
+export interface TooltipProps {
+  /**
+   * 是否显示
+   */
+  visible?: boolean;
   /**
    * 顶部边距
    */
-  padding?: px;
+  padding?: string;
   /**
-   * 显示事件名，默认为 press, 可以为 touchstart 等
+   * 显示事件名，默认为 press
    */
-  triggerOn?: string;
+  triggerOn?: 'press' | 'click';
   /**
-   * 消失的事件名，默认为 pressend, 可以为 touchend 等
+   * 消失的事件名，默认为 pressend
    */
-  triggerOff?: string;
+  triggerOff?: 'pressend';
   /**
    * 是否一直显示
    */
@@ -33,20 +46,53 @@ export interface TooltipProps extends ChartChildProps {
   /**
    * 十字线样式
    */
-  crosshairsStyle?: LineAttrs;
+  crosshairsStyle?: LineStyleProps;
+  /**
+   * 是否显示辅助点
+   */
   snap?: boolean;
   /**
    * 名称样式
    */
-  nameStyle?: TextAttrs;
+  nameStyle?: TextStyleProps;
   /**
    * 值样式
    */
-  valueStyle?: TextAttrs;
+  valueStyle?: TextStyleProps;
   /**
    * 背景样式
    */
-  background?: RectAttrs;
+  background?: RectStyleProps;
+  /**
+   * 是否显示
+   */
+  showItemMarker?: boolean;
+  defaultItem?: any;
+  custom?: boolean;
+  tooltipMarkerStyle?: any;
+  onChange?: any;
+  /**
+   *  tooltip 展示回调
+   */
+  onShow?: () => void;
+  /**
+   *  tooltip 隐藏回调
+   */
+  onHide?: () => void;
+  showXTip?: boolean;
+  /**
+   * x 的位置点类型，record 表示按照数据取位置点，coord 表示按照坐标取位置点
+   */
+  xPositionType?: 'record' | 'coord';
+  showYTip?: boolean;
+  /**
+   * x 的位置点类型，record 表示按照数据取位置点，coord 表示按照坐标取位置点
+   */
+  yPositionType?: 'record' | 'coord';
+  showTooltipMarker?: boolean;
+  customText?: any;
+  markerBackgroundStyle?: any;
+  [key: string]: any;
 }
 
 export interface TooltipState {
@@ -54,8 +100,11 @@ export interface TooltipState {
 }
 
 export default (View) => {
-  return class Tooltip extends Component<TooltipProps, TooltipState> {
-    constructor(props: TooltipProps) {
+  return class Tooltip<IProps extends TooltipProps = TooltipProps> extends Component<
+    IProps & ChartChildProps,
+    TooltipState
+  > {
+    constructor(props: IProps & ChartChildProps) {
       super(props);
       this.state = {
         records: null,
@@ -78,14 +127,19 @@ export default (View) => {
       this._initEvent();
     }
 
+    _initEvent() {
+      const { chart, triggerOn = 'press', triggerOff = 'pressend' } = this.props;
+
+      chart.on(triggerOn, this._triggerOn);
+      chart.on(triggerOff, this._triggerOff);
+    }
+
     willReceiveProps(nextProps) {
       const { defaultItem: nextDefaultItem, coord: nextCoord } = nextProps;
       const { defaultItem: lastDefaultItem, coord: lastCoord } = this.props;
+
       // 默认元素或坐标有变动，均需重新渲染
-      if (
-        !equal(nextDefaultItem, lastDefaultItem) 
-      || !equal(nextCoord, lastCoord) 
-       ) {
+      if (!isEqual(nextDefaultItem, lastDefaultItem) || !isEqual(nextCoord, lastCoord)) {
         this._showByData(nextDefaultItem);
       }
     }
@@ -93,65 +147,55 @@ export default (View) => {
     _initShow() {
       const { props } = this;
       const { defaultItem } = props;
-      if (defaultItem) {
-        this._showByData(defaultItem);
-      }
+      this._showByData(defaultItem);
     }
 
     _showByData(dataItem) {
+      if (!dataItem) return;
       const { props } = this;
       const { chart } = props;
+
       // 因为 tooltip 有可能在 geometry 之前，所以需要等 geometry render 完后再执行
       setTimeout(() => {
-        const point = chart.getPosition(dataItem);
-        this.show(point);
+        const snapRecords = chart.getRecords(dataItem, 'xfield');
+        this.showSnapRecords(snapRecords);
       }, 0);
     }
     _triggerOn = (ev) => {
-      const { points } = ev;
-      this.show(points[0], ev);
+      const { x, y } = ev;
+      this.show({ x, y }, ev);
     };
     _triggerOff = () => {
-      const { props: {alwaysShow = false} } = this;
+      const {
+        props: { alwaysShow = false },
+      } = this;
       if (!alwaysShow) {
         this.hide();
-      }    
+      }
     };
-    _initEvent() {
-      const { context, props } = this;
-      const { canvas } = context;
-      const { triggerOn = 'press', triggerOff = 'pressend' } = props;
-
-      canvas.on(triggerOn, this._triggerOn);
-      canvas.on(triggerOff, this._triggerOff);
-    }
-
-    didUnmount(): void {
-      this._clearEvents();
-    }
-
-    _clearEvents() {
-      const { context, props } = this;
-      const { canvas } = context;
-      const { triggerOn = 'press', triggerOff = 'pressend' } = props;
-      // 解绑事件
-      canvas.off(triggerOn, this._triggerOn);
-      canvas.off(triggerOff, this._triggerOff);
-    }
 
     show(point, _ev?) {
       const { props } = this;
-      const { chart, onChange } = props;
+      const { chart } = props;
       const snapRecords = chart.getSnapRecords(point, true); // 超出边界会自动调整
       if (!snapRecords || !snapRecords.length) return;
+      this.showSnapRecords(snapRecords);
+    }
+
+    showSnapRecords(snapRecords) {
+      const { chart, onChange, onShow } = this.props;
       const legendItems = chart.getLegendItems();
       const { xField, yField } = snapRecords[0];
       const xScale = chart.getScale(xField);
       const yScale = chart.getScale(yField);
+      // 如果之前没有records，视为首次出现
+      const isInitShow = !this.state.records;
 
       const records = snapRecords.map((record) => {
         const { origin, xField, yField } = record;
-        const value = yScale.getText(origin[yField]);
+        const value = isArray(origin[yField])
+          ? origin[yField].map((v) => yScale.getText(v))
+          : yScale.getText(origin[yField]);
 
         // 默认取 alias 的配置
         let name = yScale.alias;
@@ -170,7 +214,7 @@ export default (View) => {
         return {
           ...record,
           name,
-          value,
+          value: `${value}`,
         };
       });
 
@@ -180,15 +224,22 @@ export default (View) => {
       this.setState({
         records,
       });
+      if(isInitShow && isFunction(onShow)) {
+        onShow();
+      }
       if (isFunction(onChange)) {
         onChange(records);
       }
     }
 
     hide() {
+      const { onHide } = this.props;
       this.setState({
         records: null,
       });
+      if(isFunction(onHide)) {
+        onHide();
+      }
     }
 
     render() {
@@ -198,9 +249,8 @@ export default (View) => {
         return null;
       }
       const { records } = state;
-      if (!records || !records.length) return null;
 
-      return <View {...props} records={records} />;
+      return records && records.length && <View {...props} records={records} />;
     }
   };
 };

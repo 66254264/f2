@@ -1,4 +1,4 @@
-import { jsx } from '../../../jsx';
+import { jsx } from '@antv/f-engine';
 import { getMiddlePoint } from '../../../util/coord';
 import { convertToPoints } from '../util';
 
@@ -62,7 +62,7 @@ export default (props) => {
                 <group>
                   <polygon
                     attrs={{
-                      points,
+                      points: points.map((d) => [d.x, d.y]),
                       fill: color,
                       ...shape,
                     }}
